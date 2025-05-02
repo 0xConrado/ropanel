@@ -17,6 +17,13 @@ export default function Panel() {
       .then(data => setOsName(data.name));
   }, []);
 
+  // Log para depuração
+  useEffect(() => {
+    if (osName) {
+      console.log("SO detectado:", JSON.stringify(osName));
+    }
+  }, [osName]);
+
   const handleInstall = async () => {
     if (!selectedPanel) {
       setStatus("Selecione um painel para instalar.");
@@ -48,7 +55,7 @@ export default function Panel() {
           <option value="">Selecione o painel</option>
           {panels.map(panel => {
             const isSupported = panel.supported.some(s =>
-              osName.toLowerCase().includes(s.toLowerCase())
+              osName.trim().toLowerCase().includes(s.toLowerCase())
             );
             return (
               <option
@@ -76,7 +83,7 @@ export default function Panel() {
             p =>
               p.value === selectedPanel &&
               p.supported.some(s =>
-                osName.toLowerCase().includes(s.toLowerCase())
+                osName.trim().toLowerCase().includes(s.toLowerCase())
               )
           )
         }
