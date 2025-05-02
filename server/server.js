@@ -214,7 +214,7 @@ app.get('/api/os', (req, res) => {
   });
 });
 
-// Endpoint para instalar painel (Webmin, cPanel, etc)
+// Endpoint para instalar painel (Webmin, cPanel, HestiaCP, CyberPanel, ISPConfig, aaPanel, Froxlor)
 app.post('/install/panel', (req, res) => {
   const { panel } = req.body;
   if (!panel) return res.status(400).send("Painel não especificado.");
@@ -229,12 +229,21 @@ app.post('/install/panel', (req, res) => {
     soName = os.type();
   }
 
-  // Comandos de instalação por painel e SO
   let installCmd = '';
   if (panel === "webmin" && soName.toLowerCase().includes("ubuntu")) {
     installCmd = "apt update && apt install -y wget && wget -qO- http://www.webmin.com/jcameron-key.asc | gpg --dearmor > /usr/share/keyrings/webmin.gpg && echo 'deb [signed-by=/usr/share/keyrings/webmin.gpg] http://download.webmin.com/download/repository sarge contrib' > /etc/apt/sources.list.d/webmin.list && apt update && apt install -y webmin";
   } else if (panel === "cpanel" && (soName.toLowerCase().includes("centos") || soName.toLowerCase().includes("alma") || soName.toLowerCase().includes("cloudlinux"))) {
     installCmd = "cd /home && curl -o latest -L https://securedownloads.cpanel.net/latest && sh latest";
+  } else if (panel === "hestiacp" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian"))) {
+    installCmd = "wget https://raw.githubusercontent.com/hestiacp/hestiacp/release/install/hst-install.sh -O hst-install.sh && bash hst-install.sh --force --with-debs";
+  } else if (panel === "cyberpanel" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("centos") || soName.toLowerCase().includes("alma"))) {
+    installCmd = "sh <(curl https://cyberpanel.net/install.sh || true)";
+  } else if (panel === "ispconfig" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian"))) {
+    installCmd = "wget -O - https://get.ispconfig.org | sh -s -- --use-nginx --unattended-upgrades";
+  } else if (panel === "aapanel" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian") || soName.toLowerCase().includes("centos"))) {
+    installCmd = "wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh";
+  } else if (panel === "froxlor" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian"))) {
+    installCmd = "apt update && apt install -y froxlor";
   } else {
     return res.status(400).send("Painel não suportado para este sistema operacional.");
   }
@@ -242,6 +251,46 @@ app.post('/install/panel', (req, res) => {
   exec(installCmd, (error, stdout, stderr) => {
     if (error) return res.status(500).send(stderr || "Erro ao instalar o painel.");
     res.send(stdout || "Painel instalado com sucesso!");
+  });
+});
+
+// Endpoint para desinstalar painel
+app.post('/uninstall/panel', (req, res) => {
+  const { panel } = req.body;
+  if (!panel) return res.status(400).send("Painel não especificado.");
+
+  // Detecta SO
+  let soName = '';
+  try {
+    const osRelease = fs.readFileSync('/etc/os-release', 'utf8');
+    const nameMatch = osRelease.match(/^NAME="?([^"\n]*)"?/m);
+    soName = nameMatch ? nameMatch[1] : '';
+  } catch {
+    soName = os.type();
+  }
+
+  let uninstallCmd = '';
+  if (panel === "webmin" && soName.toLowerCase().includes("ubuntu")) {
+    uninstallCmd = "apt-get remove --purge -y webmin && apt-get autoremove -y";
+  } else if (panel === "cpanel") {
+    uninstallCmd = "echo 'cPanel não possui script oficial de desinstalação. Reinstale o sistema operacional para remover completamente.'";
+  } else if (panel === "hestiacp") {
+    uninstallCmd = "bash /usr/local/hestia/install/hst-uninstall.sh --force";
+  } else if (panel === "cyberpanel") {
+    uninstallCmd = "echo 'CyberPanel não possui script oficial de desinstalação. Remova manualmente.'";
+  } else if (panel === "ispconfig") {
+    uninstallCmd = "echo 'ISPConfig não possui script oficial de desinstalação. Remova manualmente.'";
+  } else if (panel === "aapanel") {
+    uninstallCmd = "curl -sSO http://www.aapanel.com/script/uninstall_en.sh && bash uninstall_en.sh";
+  } else if (panel === "froxlor" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian"))) {
+    uninstallCmd = "apt-get remove --purge -y froxlor && apt-get autoremove -y";
+  } else {
+    return res.status(400).send("Painel não suportado para desinstalação.");
+  }
+
+  exec(uninstallCmd, (error, stdout, stderr) => {
+    if (error) return res.status(500).send(stderr || "Erro ao desinstalar o painel.");
+    res.send(stdout || "Painel desinstalado com sucesso!");
   });
 });
 
