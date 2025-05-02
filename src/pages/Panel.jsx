@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const panels = [
   { name: "Webmin", value: "webmin", supported: ["Ubuntu", "Debian"] },
   { name: "cPanel", value: "cpanel", supported: ["CentOS", "CloudLinux", "AlmaLinux"] },
@@ -12,7 +14,7 @@ export default function Panel() {
   const [osName, setOsName] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/os")
+    fetch(`${API_URL}/api/os`)
       .then(res => res.json())
       .then(data => setOsName(data.name));
   }, []);
@@ -31,7 +33,7 @@ export default function Panel() {
     }
     setStatus("Instalando...");
     try {
-      const res = await fetch(`http://localhost:3001/install/panel`, {
+      const res = await fetch(`${API_URL}/install/panel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ panel: selectedPanel }),
