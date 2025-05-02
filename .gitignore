@@ -1,24 +1,295 @@
+# Dependências
+node_modules/
+.pnp/
+.pnp.js
+
+# Build
+dist/
+build/
+out/
+coverage/
+.nyc_output/
+
+# Arquivos de ambiente
+.env
+.env.*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # Logs
-logs
-*.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*.log
 
-node_modules
-dist
-dist-ssr
-*.local
+# Editor/IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# SO
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# Testes
+jest/
+coverage/
+*.lcov
+
+# Relatórios
+*.tgz
+
+# Arquivos de lock antigos
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Arquivos de cache
+.cache/
+.next/
+.nuxt/
+.svelte-kit/
+.sass-cache/
+.eslintcache
+.cache-loader/
+.tmp/
+temp/
+tmp/
+
+# Arquivos de build do Vite
+.vite/
+
+# Arquivos de build do CRA
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+
+# Arquivos grandes/binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.tar
+*.tar.gz
+*.zip
+*.7z
+
+# Arquivos de configuração do sistema
+*.swp
+*.bak
+*.tmp
+
+# Arquivos de configuração do projeto
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Arquivos de configuração do Mac
+.AppleDouble
+.LSOverride
+
+# Arquivos de configuração do Windows
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# Arquivos de configuração do Linux
+*~
+
+# Arquivos de configuração do VS Code
+.vscode/*
+
+# Arquivos de configuração do JetBrains
+.idea/
+*.iml
+
+# Arquivos de configuração do Prettier
+.prettierignore
+
+# Arquivos de configuração do ESLint
+.eslintcache
+
+# Arquivos de configuração do Stylelint
+.stylelintcache
+
+# Arquivos de configuração do TypeScript
+*.tsbuildinfo
+
+# Arquivos de configuração do Cypress
+cypress/videos/
+cypress/screenshots/
+
+# Arquivos de configuração do Playwright
+test-results/
+playwright-report/
+
+# Arquivos de configuração do Storybook
+storybook-static/
+
+# Arquivos de configuração do Firebase
+.firebase/
+
+# Arquivos de configuração do Docker
+docker-compose.override.yml
+
+# Arquivos de configuração do NPM
+.npm/
+
+# Arquivos de configuração do Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+# Arquivos de configuração do pnpm
+.pnpm-debug.log
+
+# Arquivos de configuração do lerna
+lerna-debug.log
+
+# Arquivos de configuração do turbo
+.turbo/
+
+# Arquivos de configuração do vercel
+.vercel/
+
+# Arquivos de configuração do netlify
+.netlify/
+
+# Arquivos de configuração do heroku
+.heroku/
+
+# Arquivos de configuração do surge
+.surge/
+
+# Arquivos de configuração do now
+.now/
+
+# Arquivos de configuração do Firebase
+.firebase/
+
+# Arquivos de configuração do Amplify
+.amplify/
+
+# Arquivos de configuração do AWS
+.aws/
+
+# Arquivos de configuração do Google Cloud
+.gcloud/
+
+# Arquivos de configuração do Azure
+.azure/
+
+# Arquivos de configuração do GitHub
+.github/
+
+# Arquivos de configuração do GitLab
+.gitlab/
+
+# Arquivos de configuração do Bitbucket
+.bitbucket/
+
+# Arquivos de configuração do Travis CI
+.travis.yml
+
+# Arquivos de configuração do CircleCI
+.circleci/
+
+# Arquivos de configuração do AppVeyor
+.appveyor.yml
+
+# Arquivos de configuração do Codecov
+.codecov.yml
+
+# Arquivos de configuração do Coveralls
+.coveralls.yml
+
+# Arquivos de configuração do SonarQube
+.sonar/
+
+# Arquivos de configuração do Sentry
+.sentryclirc
+
+# Arquivos de configuração do Bugsnag
+.bugsnagrc
+
+# Arquivos de configuração do Datadog
+.datadogrc
+
+# Arquivos de configuração do New Relic
+.newrelic.js
+
+# Arquivos de configuração do Rollbar
+.rollbar.js
+
+# Arquivos de configuração do Snyk
+.snyk
+
+# Arquivos de configuração do Dependabot
+.dependabot/
+
+# Arquivos de configuração do Renovate
+.renovaterc.json
+
+# Arquivos de configuração do Greenkeeper
+.greenkeeper.json
+
+# Arquivos de configuração do Code Climate
+.codeclimate.yml
+
+# Arquivos de configuração do Hound
+.hound.yml
+
+# Arquivos de configuração do Danger
+.dangerfile.js
+
+# Arquivos de configuração do Danger
+.dangerfile.ts
+
+# Arquivos de configuração do Danger
+.dangerfile.rb
+
+# Arquivos de configuração do Danger
+.dangerfile.swift
+
+# Arquivos de configuração do Danger
+.dangerfile.kt
+
+# Arquivos de configuração do Danger
+.dangerfile.java
+
+# Arquivos de configuração do Danger
+.dangerfile.py
+
+# Arquivos de configuração do Danger
+.dangerfile.go
+
+# Arquivos de configuração do Danger
+.dangerfile.coffee
+
+# Arquivos de configuração do Danger
+.dangerfile.litcoffee
+
+# Arquivos de configuração do Danger
+.dangerfile.md
+
+# Arquivos de configuração do Danger
+.dangerfile.txt
+
+# Arquivos de configuração do Danger
+.dangerfile.json
+
+# Arquivos de configuração do Danger
+.dangerfile.yaml
+
+# Arquivos de configuração do Danger
+.dangerfile.yml

@@ -17,13 +17,15 @@ const registeredClients = new Map();
 app.use(cors());
 app.use(express.json());
 
+// Cria diretório de emuladores se não existir
 if (!fs.existsSync(EMULADOR_DIR)) {
   fs.mkdirSync(EMULADOR_DIR, { recursive: true });
 }
 
+// Função para comandos por plataforma
 function getPlatformCommands(tipo, operacao) {
   const basePath = path.join(EMULADOR_DIR, tipo);
-  
+
   const commands = {
     linux: {
       compilar: `cd ${basePath} && make clean && make server`,
@@ -42,6 +44,7 @@ function getPlatformCommands(tipo, operacao) {
   return commands[platform]?.[operacao] || null;
 }
 
+// Checagem de dependências básicas
 function checkDependencies() {
   const dependencies = {
     linux: ['make', 'gcc'],
@@ -71,6 +74,7 @@ if (missingDeps.length > 0) {
   process.exit(1);
 }
 
+// WebSocket para feedback em tempo real
 wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
@@ -99,9 +103,10 @@ function sendWsMessage(clientId, type, data) {
   }
 }
 
+// Endpoint para instalar emulador
 app.post('/api/instalar', (req, res) => {
   const { tipo, repo, clientId } = req.body;
-  
+
   if (!tipo) return res.status(400).json({ error: 'Campo "tipo" é obrigatório.' });
   if (tipo === 'custom' && !repo) return res.status(400).json({ error: 'Campo "repo" é obrigatório para tipo "custom".' });
   if (!registeredClients.has(clientId)) return res.status(400).json({ error: 'Conecte-se via WebSocket e registre-se primeiro', requiresRegistration: true });
@@ -110,7 +115,7 @@ app.post('/api/instalar', (req, res) => {
   switch (tipo) {
     case 'hercules': comando = 'git clone https://github.com/HerculesWS/Hercules.git'; break;
     case 'rathena': comando = 'git clone https://github.com/rathena/rathena.git'; break;
-    case 'custom': 
+    case 'custom':
       if (!repo.startsWith('https://')) return res.status(400).json({ error: 'URL deve começar com https://' });
       comando = `git clone ${repo}`;
       break;
@@ -135,6 +140,7 @@ app.post('/api/instalar', (req, res) => {
   });
 });
 
+// Endpoint para compilar emulador
 app.post('/api/compilar', (req, res) => {
   const { tipo, clientId, targetOS } = req.body;
 
@@ -169,6 +175,7 @@ app.post('/api/compilar', (req, res) => {
   });
 });
 
+// Endpoint para gerenciar emulador (iniciar, parar, reiniciar)
 app.post('/api/gerenciar', (req, res) => {
   const { acao, tipo, clientId } = req.body;
 
@@ -197,6 +204,48 @@ app.post('/api/gerenciar', (req, res) => {
   });
 });
 
+// Endpoint para detectar o sistema operacional
+app.get('/api/os', (req, res) => {
+  fs.readFile('/etc/os-release', 'utf8', (err, data) => {
+    if (err) return res.json({ name: os.type() });
+    const nameMatch = data.match(/^NAME="?([^"\n]*)"?/m);
+    const name = nameMatch ? nameMatch[1] : os.type();
+    res.json({ name });
+  });
+});
+
+// Endpoint para instalar painel (Webmin, cPanel, etc)
+app.post('/install/panel', (req, res) => {
+  const { panel } = req.body;
+  if (!panel) return res.status(400).send("Painel não especificado.");
+
+  // Detecta SO
+  let soName = '';
+  try {
+    const osRelease = fs.readFileSync('/etc/os-release', 'utf8');
+    const nameMatch = osRelease.match(/^NAME="?([^"\n]*)"?/m);
+    soName = nameMatch ? nameMatch[1] : '';
+  } catch {
+    soName = os.type();
+  }
+
+  // Comandos de instalação por painel e SO
+  let installCmd = '';
+  if (panel === "webmin" && soName.toLowerCase().includes("ubuntu")) {
+    installCmd = "apt update && apt install -y wget && wget -qO- http://www.webmin.com/jcameron-key.asc | gpg --dearmor > /usr/share/keyrings/webmin.gpg && echo 'deb [signed-by=/usr/share/keyrings/webmin.gpg] http://download.webmin.com/download/repository sarge contrib' > /etc/apt/sources.list.d/webmin.list && apt update && apt install -y webmin";
+  } else if (panel === "cpanel" && (soName.toLowerCase().includes("centos") || soName.toLowerCase().includes("alma") || soName.toLowerCase().includes("cloudlinux"))) {
+    installCmd = "cd /home && curl -o latest -L https://securedownloads.cpanel.net/latest && sh latest";
+  } else {
+    return res.status(400).send("Painel não suportado para este sistema operacional.");
+  }
+
+  exec(installCmd, (error, stdout, stderr) => {
+    if (error) return res.status(500).send(stderr || "Erro ao instalar o painel.");
+    res.send(stdout || "Painel instalado com sucesso!");
+  });
+});
+
+// Inicializa o servidor
 server.listen(3001, '0.0.0.0', () => {
   console.log(`Servidor rodando em http://localhost:3001 (${platform})`);
   console.log('WebSocket disponível em ws://localhost:3001');
