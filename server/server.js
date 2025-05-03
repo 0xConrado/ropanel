@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { exec, execSync } = require('child_process');
+const { exec, execSync, spawn } = require('child_process');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
@@ -12,15 +12,13 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const platform = os.platform();
 
-// Diretório base dos emuladores
 const EMULADOR_DIR = '/root/Emulador';
-
 const registeredClients = new Map();
+const runningServers = {}; // Para guardar os processos spawn
 
 app.use(cors());
 app.use(express.json());
 
-// Cria diretório de emuladores se não existir
 if (!fs.existsSync(EMULADOR_DIR)) {
   fs.mkdirSync(EMULADOR_DIR, { recursive: true });
 }
@@ -31,20 +29,16 @@ function getPlatformCommands(tipo, operacao) {
 
   const commands = {
     linux: {
-      // Compilar: executa configure (se existir), make clean (se Makefile existir), e make server
       compilar: `cd ${basePath} && [ -f configure ] && chmod +x configure && ./configure ; [ -f Makefile ] && make clean || true ; make server`,
-      // Iniciar: executa login-server, char-server e map-server em background
-      iniciar: `cd ${basePath} && ./login-server & ./char-server & ./map-server &`,
-      // Parar: mata os processos dos três servidores
-      parar: `cd ${basePath} && pkill login-server && pkill char-server && pkill map-server`,
-      // Reiniciar: para e inicia novamente os três servidores
-      reiniciar: `cd ${basePath} && pkill login-server && pkill char-server && pkill map-server && ./login-server & ./char-server & ./map-server &`
+      iniciar: null,
+      parar: null,
+      reiniciar: null
     },
     win32: {
       compilar: `cd ${basePath} && cmake . && cmake --build .`,
-      iniciar: `cd ${basePath} && start start-server.bat`,
-      parar: `taskkill /im server.exe /f`,
-      reiniciar: `cd ${basePath} && call stop-server.bat && start start-server.bat`
+      iniciar: null,
+      parar: null,
+      reiniciar: null
     }
   };
 
@@ -106,7 +100,7 @@ wss.on('connection', (ws) => {
 function sendWsMessage(clientId, type, data) {
   const ws = registeredClients.get(clientId);
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type, data }));
+    ws.send(JSON.stringify({ type, ...data }));
   }
 }
 
@@ -130,18 +124,18 @@ app.post('/api/instalar', (req, res) => {
   }
 
   res.json({ success: true, message: 'Processo de instalação iniciado' });
-  sendWsMessage(clientId, 'status', 'Iniciando instalação...');
+  sendWsMessage(clientId, 'status', { data: 'Iniciando instalação...' });
 
   const child = exec(comando, { cwd: EMULADOR_DIR });
 
-  child.stdout.on('data', (data) => sendWsMessage(clientId, 'log', data.toString()));
-  child.stderr.on('data', (data) => sendWsMessage(clientId, 'error', data.toString()));
+  child.stdout.on('data', (data) => sendWsMessage(clientId, 'log', { data: data.toString() }));
+  child.stderr.on('data', (data) => sendWsMessage(clientId, 'error', { data: data.toString() }));
   child.on('close', (code) => {
     if (code === 0) {
-      sendWsMessage(clientId, 'success', 'Instalação concluída com sucesso!');
+      sendWsMessage(clientId, 'success', { data: 'Instalação concluída com sucesso!' });
       sendWsMessage(clientId, 'complete', { code, operacao: 'instalar', emulador: tipo });
     } else {
-      sendWsMessage(clientId, 'error', `Instalação falhou com código ${code}`);
+      sendWsMessage(clientId, 'error', { data: `Instalação falhou com código ${code}` });
       sendWsMessage(clientId, 'complete', { code });
     }
   });
@@ -149,7 +143,7 @@ app.post('/api/instalar', (req, res) => {
 
 // Endpoint para compilar emulador
 app.post('/api/compilar', (req, res) => {
-  const { tipo, clientId, targetOS } = req.body;
+  const { tipo, clientId } = req.body;
 
   if (!tipo) return res.status(400).json({ error: 'Campo "tipo" é obrigatório.' });
   if (!registeredClients.has(clientId)) return res.status(400).json({ error: 'Conecte-se via WebSocket e registre-se primeiro', requiresRegistration: true });
@@ -158,25 +152,25 @@ app.post('/api/compilar', (req, res) => {
   if (!comando) return res.status(400).json({ error: 'Sistema operacional não suportado' });
 
   res.json({ success: true, message: 'Processo de compilação iniciado' });
-  sendWsMessage(clientId, 'status', 'Iniciando compilação...');
+  sendWsMessage(clientId, 'status', { data: 'Iniciando compilação...' });
 
   const child = exec(comando);
 
-  child.stdout.on('data', (data) => sendWsMessage(clientId, 'log', data.toString()));
+  child.stdout.on('data', (data) => sendWsMessage(clientId, 'log', { data: data.toString() }));
   child.stderr.on('data', (data) => {
     const errorMsg = data.toString();
     if (platform === 'win32' && errorMsg.includes('cmake')) {
-      sendWsMessage(clientId, 'error', 'CMake não encontrado. Instale: https://cmake.org/download/');
+      sendWsMessage(clientId, 'error', { data: 'CMake não encontrado. Instale: https://cmake.org/download/' });
     } else {
-      sendWsMessage(clientId, 'error', errorMsg);
+      sendWsMessage(clientId, 'error', { data: errorMsg });
     }
   });
   child.on('close', (code) => {
     if (code === 0) {
-      sendWsMessage(clientId, 'success', 'Compilação concluída com sucesso!');
+      sendWsMessage(clientId, 'success', { data: 'Compilação concluída com sucesso!' });
       sendWsMessage(clientId, 'complete', { code, operacao: 'compilar' });
     } else {
-      sendWsMessage(clientId, 'error', `Compilação falhou com código ${code}`);
+      sendWsMessage(clientId, 'error', { data: `Compilação falhou com código ${code}` });
       sendWsMessage(clientId, 'complete', { code });
     }
   });
@@ -189,15 +183,17 @@ app.post('/api/gerenciar', (req, res) => {
   if (!acao || !tipo) return res.status(400).json({ error: 'Campos "acao" e "tipo" são obrigatórios.' });
   if (!registeredClients.has(clientId)) return res.status(400).json({ error: 'Conecte-se via WebSocket e registre-se primeiro', requiresRegistration: true });
 
-  // >>>>> SUPORTE À DESINSTALAÇÃO <<<<<
+  const basePath = path.join(EMULADOR_DIR, tipo);
+
+  // Desinstalar
   if (acao === "desinstalar") {
     const emuladorPath = path.join(EMULADOR_DIR, tipo);
     exec(`rm -rf ${emuladorPath}`, (err) => {
       if (err) {
-        sendWsMessage(clientId, 'error', `Erro ao desinstalar: ${err.message}`);
+        sendWsMessage(clientId, 'error', { data: `Erro ao desinstalar: ${err.message}` });
         return res.status(500).json({ error: "Erro ao desinstalar" });
       }
-      sendWsMessage(clientId, 'success', 'Emulador desinstalado com sucesso!');
+      sendWsMessage(clientId, 'success', { data: 'Emulador desinstalado com sucesso!' });
       setTimeout(() => {
         sendWsMessage(clientId, 'complete', { code: 0, operacao: 'desinstalar' });
       }, 500);
@@ -205,25 +201,120 @@ app.post('/api/gerenciar', (req, res) => {
     });
     return;
   }
-  // >>>>> FIM DO SUPORTE À DESINSTALAÇÃO <<<<<
 
+  // Iniciar (logs em tempo real)
+  if (acao === "iniciar") {
+    // Se já estiver rodando, não inicia de novo
+    if (runningServers[tipo]) {
+      sendWsMessage(clientId, 'error', { data: 'Servidores já estão rodando.' });
+      return res.json({ error: 'Já rodando' });
+    }
+
+    const servers = [
+      { name: "login", bin: "./login-server" },
+      { name: "char", bin: "./char-server" },
+      { name: "map", bin: "./map-server" }
+    ];
+
+    runningServers[tipo] = {};
+
+    servers.forEach(({ name, bin }) => {
+      const proc = spawn(bin, [], { cwd: basePath });
+
+      runningServers[tipo][name] = proc;
+
+      proc.stdout.on('data', (data) => {
+        sendWsMessage(clientId, 'log', { server: name, data: data.toString() });
+      });
+      proc.stderr.on('data', (data) => {
+        sendWsMessage(clientId, 'log', { server: name, data: data.toString() });
+      });
+      proc.on('close', (code) => {
+        sendWsMessage(clientId, 'log', { server: name, data: `Processo ${name}-server finalizado (código ${code})` });
+      });
+    });
+
+    sendWsMessage(clientId, 'status', { data: 'Servidores iniciados.' });
+    return res.json({ success: true });
+  }
+
+  // Parar
+  if (acao === "parar") {
+    if (runningServers[tipo]) {
+      Object.values(runningServers[tipo]).forEach(proc => {
+        if (proc && !proc.killed) proc.kill();
+      });
+      delete runningServers[tipo];
+      sendWsMessage(clientId, 'status', { data: 'Servidores parados.' });
+      return res.json({ success: true });
+    } else {
+      // fallback: pkill
+      exec(`cd ${basePath} && pkill login-server && pkill char-server && pkill map-server`, () => {
+        sendWsMessage(clientId, 'status', { data: 'Servidores parados.' });
+        return res.json({ success: true });
+      });
+    }
+    return;
+  }
+
+  // Reiniciar
+  if (acao === "reiniciar") {
+    // Parar
+    if (runningServers[tipo]) {
+      Object.values(runningServers[tipo]).forEach(proc => {
+        if (proc && !proc.killed) proc.kill();
+      });
+      delete runningServers[tipo];
+    } else {
+      exec(`cd ${basePath} && pkill login-server && pkill char-server && pkill map-server`);
+    }
+    // Iniciar novamente
+    const servers = [
+      { name: "login", bin: "./login-server" },
+      { name: "char", bin: "./char-server" },
+      { name: "map", bin: "./map-server" }
+    ];
+
+    runningServers[tipo] = {};
+
+    servers.forEach(({ name, bin }) => {
+      const proc = spawn(bin, [], { cwd: basePath });
+
+      runningServers[tipo][name] = proc;
+
+      proc.stdout.on('data', (data) => {
+        sendWsMessage(clientId, 'log', { server: name, data: data.toString() });
+      });
+      proc.stderr.on('data', (data) => {
+        sendWsMessage(clientId, 'log', { server: name, data: data.toString() });
+      });
+      proc.on('close', (code) => {
+        sendWsMessage(clientId, 'log', { server: name, data: `Processo ${name}-server finalizado (código ${code})` });
+      });
+    });
+
+    sendWsMessage(clientId, 'status', { data: 'Servidores reiniciados.' });
+    return res.json({ success: true });
+  }
+
+  // fallback para outras ações
   const comando = getPlatformCommands(tipo, acao);
   if (!comando) return res.status(400).json({ error: 'Ação inválida' });
 
   res.json({ success: true, message: `Processo ${acao} iniciado` });
-  sendWsMessage(clientId, 'status', `Executando ação: ${acao}`);
+  sendWsMessage(clientId, 'status', { data: `Executando ação: ${acao}` });
 
   const child = exec(comando);
 
-  child.stdout.on('data', (data) => sendWsMessage(clientId, 'log', data.toString()));
-  child.stderr.on('data', (data) => sendWsMessage(clientId, 'error', data.toString()));
+  child.stdout.on('data', (data) => sendWsMessage(clientId, 'log', { data: data.toString() }));
+  child.stderr.on('data', (data) => sendWsMessage(clientId, 'error', { data: data.toString() }));
   child.on('close', (code) => {
     if (code === 0) {
       const estado = acao === 'parar' ? 'parado' : 'iniciado';
       sendWsMessage(clientId, 'execucao', { estado });
-      sendWsMessage(clientId, 'success', `Ação ${acao} concluída com sucesso!`);
+      sendWsMessage(clientId, 'success', { data: `Ação ${acao} concluída com sucesso!` });
     } else {
-      sendWsMessage(clientId, 'error', `Ação ${acao} falhou com código ${code}`);
+      sendWsMessage(clientId, 'error', { data: `Ação ${acao} falhou com código ${code}` });
     }
     sendWsMessage(clientId, 'complete', { code });
   });
