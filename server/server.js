@@ -214,39 +214,56 @@ app.get('/api/os', (req, res) => {
   });
 });
 
-// Endpoint para listar painéis realmente instalados (ATUALIZADO)
-app.get('/api/panels/installed', (req, res) => {
-  const checks = [
-    { name: "webmin",     cmd: "systemctl is-active webmin" },
-    { name: "hestiacp",   cmd: "systemctl is-active hestia" },
-    { name: "froxlor",    cmd: "systemctl is-active froxlor" },
-    { name: "aapanel",    cmd: "systemctl is-active btpanel" },
-    { name: "cpanel",     cmd: "systemctl is-active cpanel" },
-    { name: "cyberpanel", cmd: "systemctl is-active lscpd" },
-    { name: "ispconfig",  cmd: "systemctl is-active apache2 || systemctl is-active nginx" }
-  ];
+// Checagem universal de painéis
+const panelChecks = [
+  { name: "webmin",     type: "systemd", service: "webmin" },
+  { name: "hestiacp",   type: "systemd", service: "hestia" },
+  { name: "froxlor",    type: "systemd", service: "froxlor" },
+  { name: "cpanel",     type: "systemd", service: "cpanel" },
+  { name: "cyberpanel", type: "systemd", service: "lscpd" },
+  { name: "ispconfig",  type: "systemd", service: "apache2" }, // pode duplicar para nginx se quiser
+  { name: "aapanel",    type: "port",    port: 13349 }
+];
 
+// Endpoint para listar painéis realmente instalados (universal)
+app.get('/api/panels/installed', (req, res) => {
   let installed = [];
   let checked = 0;
 
-  if (checks.length === 0) return res.json({ installed: [] });
+  if (panelChecks.length === 0) return res.json({ installed: [] });
 
-  checks.forEach(check => {
-    exec(check.cmd, (err, stdout) => {
-      if (stdout && stdout.trim() === "active") {
-        installed.push(check.name);
-      }
+  panelChecks.forEach(check => {
+    let cmd = "";
+    if (check.type === "systemd") {
+      cmd = `systemctl is-active ${check.service}`;
+    } else if (check.type === "port") {
+      cmd = `ss -ltnp | grep ${check.port}`;
+    } else {
       checked++;
-      if (checked === checks.length) {
+      if (checked === panelChecks.length) res.json({ installed });
+      return;
+    }
+
+    exec(cmd, (err, stdout) => {
+      let isInstalled = false;
+      if (check.type === "systemd" && stdout && stdout.trim() === "active") {
+        isInstalled = true;
+      }
+      if (check.type === "port" && stdout && stdout.trim() !== "") {
+        isInstalled = true;
+      }
+      if (isInstalled) installed.push(check.name);
+
+      checked++;
+      if (checked === panelChecks.length) {
         res.json({ installed });
       }
     });
   });
 });
 
-// Endpoint para listar emuladores instalados (ATUALIZADO)
+// Endpoint para listar emuladores instalados
 app.get('/api/emulators/installed', (req, res) => {
-  // Lista as pastas dentro de EMULADOR_DIR como emuladores instalados
   fs.readdir(EMULADOR_DIR, { withFileTypes: true }, (err, files) => {
     if (err) return res.json({ installed: [] });
     const installed = files
