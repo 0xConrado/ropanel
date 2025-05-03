@@ -11,7 +11,10 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const platform = os.platform();
+
+// Diretório base dos emuladores
 const EMULADOR_DIR = '/root/Emulador';
+
 const registeredClients = new Map();
 
 app.use(cors());
@@ -175,12 +178,30 @@ app.post('/api/compilar', (req, res) => {
   });
 });
 
-// Endpoint para gerenciar emulador (iniciar, parar, reiniciar)
+// Endpoint para gerenciar emulador (iniciar, parar, reiniciar, desinstalar)
 app.post('/api/gerenciar', (req, res) => {
   const { acao, tipo, clientId } = req.body;
 
   if (!acao || !tipo) return res.status(400).json({ error: 'Campos "acao" e "tipo" são obrigatórios.' });
   if (!registeredClients.has(clientId)) return res.status(400).json({ error: 'Conecte-se via WebSocket e registre-se primeiro', requiresRegistration: true });
+
+  // >>>>> SUPORTE À DESINSTALAÇÃO <<<<<
+  if (acao === "desinstalar") {
+    const emuladorPath = path.join(EMULADOR_DIR, tipo);
+    exec(`rm -rf ${emuladorPath}`, (err) => {
+      if (err) {
+        sendWsMessage(clientId, 'error', `Erro ao desinstalar: ${err.message}`);
+        return res.status(500).json({ error: "Erro ao desinstalar" });
+      }
+      sendWsMessage(clientId, 'success', 'Emulador desinstalado com sucesso!');
+      setTimeout(() => {
+        sendWsMessage(clientId, 'complete', { code: 0, operacao: 'desinstalar' });
+      }, 500);
+      return res.json({ success: true });
+    });
+    return;
+  }
+  // >>>>> FIM DO SUPORTE À DESINSTALAÇÃO <<<<<
 
   const comando = getPlatformCommands(tipo, acao);
   if (!comando) return res.status(400).json({ error: 'Ação inválida' });
@@ -221,7 +242,7 @@ const panelChecks = [
   { name: "froxlor",    type: "systemd", service: "froxlor" },
   { name: "cpanel",     type: "systemd", service: "cpanel" },
   { name: "cyberpanel", type: "systemd", service: "lscpd" },
-  { name: "ispconfig",  type: "systemd", service: "apache2" }, // pode duplicar para nginx se quiser
+  { name: "ispconfig",  type: "systemd", service: "apache2" },
   { name: "aapanel",    type: "port",    port: 13349 }
 ];
 

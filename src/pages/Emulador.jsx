@@ -1,125 +1,108 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { Server, Download, Terminal, Power, RotateCw, Wrench, XCircle, CheckCircle } from "lucide-react";
+import { Download, Terminal, Power, RotateCw, Wrench, Trash2, CheckCircle, XCircle } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-export default function Emulador({ emuladores, setEmuladores }) {
-  const { nome } = useParams();
+const EMULADORES = [
+  { value: "hercules", label: "Hercules" },
+  { value: "rathena", label: "rAthena" },
+  { value: "custom", label: "Customizado" }
+];
+
+export default function Emulador() {
+  const [selected, setSelected] = useState("hercules");
+  const [repoCustom, setRepoCustom] = useState("");
   const [status, setStatus] = useState({
+    instalado: false,
     compilado: false,
+    rodando: false,
     emProgresso: false,
     logs: [],
-    executando: false,
-    instalado: false,
   });
-  const [config, setConfig] = useState({
-    porta: 6900,
-    repoCustom: "",
-    versao: "hercules",
-  });
-  const [wsReady, setWsReady] = useState(false);
+  const [emuladoresInstalados, setEmuladoresInstalados] = useState([]);
+  const [clientId] = useState(() => Math.random().toString(36).substring(2, 15));
   const ws = useRef(null);
-  const clientId = useRef(Math.random().toString(36).substring(2, 15));
   const logsEndRef = useRef(null);
 
   // WebSocket para logs em tempo real
   useEffect(() => {
-    ws.current = new window.WebSocket(`ws://${window.location.hostname}:3001`);
+    ws.current = new window.WebSocket(API_URL.replace(/^http/, "ws"));
     ws.current.onopen = () => {
-      setWsReady(true);
-      ws.current.send(
-        JSON.stringify({
-          type: "register",
-          clientId: clientId.current,
-        })
-      );
+      ws.current.send(JSON.stringify({ type: "register", clientId }));
     };
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === "log") {
+      if (data.type === "log" || data.type === "status" || data.type === "error" || data.type === "success") {
         setStatus((prev) => ({
           ...prev,
-          logs: [...prev.logs, ...data.data.split("\n").filter((line) => line.trim())],
+          logs: [...prev.logs, data.data]
         }));
       }
-      if (data.type === "complete") {
-        if (data.operacao === "instalar" && data.code === 0) {
-          if (!emuladores.includes(config.versao)) {
-            setEmuladores((prev) => [...prev, config.versao]);
-          }
-          setStatus((prev) => ({
-            ...prev,
-            logs: [...prev.logs, "✅ Emulador instalado!"],
-            emProgresso: false,
-            instalado: true,
-          }));
-        }
-        if (data.operacao === "compilar") {
-          setStatus((prev) => ({
-            ...prev,
-            logs: [...prev.logs, data.code === 0 ? "✅ Compilação concluída!" : "❌ Erro na compilação."],
-            emProgresso: false,
-            compilado: data.code === 0,
-          }));
-        }
-        if (data.operacao === "iniciar") {
-          setStatus((prev) => ({
-            ...prev,
-            logs: [...prev.logs, data.code === 0 ? "✅ Emulador iniciado!" : "❌ Erro ao iniciar."],
-            emProgresso: false,
-            executando: data.code === 0,
-          }));
-        }
-        if (data.operacao === "parar") {
-          setStatus((prev) => ({
-            ...prev,
-            logs: [...prev.logs, data.code === 0 ? "✅ Emulador parado!" : "❌ Erro ao parar."],
-            emProgresso: false,
-            executando: false,
-          }));
-        }
-        if (data.operacao === "reiniciar") {
-          setStatus((prev) => ({
-            ...prev,
-            logs: [...prev.logs, data.code === 0 ? "✅ Emulador reiniciado!" : "❌ Erro ao reiniciar."],
-            emProgresso: false,
-            executando: data.code === 0,
-          }));
-        }
+      if (data.type === "complete" && data.operacao === "instalar") {
+        fetchEmuladores();
+        setStatus((prev) => ({
+          ...prev,
+          emProgresso: false,
+        }));
       }
     };
-    ws.current.onclose = () => setWsReady(false);
-    ws.current.onerror = () => setWsReady(false);
+    ws.current.onclose = () => {};
+    ws.current.onerror = () => {};
     return () => ws.current && ws.current.close();
     // eslint-disable-next-line
-  }, [config.versao, emuladores, setEmuladores]);
+  }, [clientId]);
+
+  useEffect(() => {
+    fetchEmuladores();
+  }, []);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [status.logs]);
 
-  // Funções de controle
-  const instalarEmulador = async () => {
-    setStatus({
+  function fetchEmuladores() {
+    fetch(`${API_URL}/api/emulators/installed`)
+      .then((res) => res.json())
+      .then((data) => {
+        setEmuladoresInstalados(data.installed || []);
+        setStatus((prev) => ({
+          ...prev,
+          instalado: data.installed?.includes(selected),
+        }));
+      });
+  }
+
+  useEffect(() => {
+    setStatus((prev) => ({
+      ...prev,
+      instalado: emuladoresInstalados.includes(selected),
+      logs: [],
       compilado: false,
+      rodando: false,
+      emProgresso: false,
+    }));
+    // eslint-disable-next-line
+  }, [selected, emuladoresInstalados]);
+
+  // Ações
+  const instalar = async () => {
+    setStatus((prev) => ({
+      ...prev,
       emProgresso: true,
-      executando: false,
       logs: ["Iniciando instalação..."],
-      instalado: false,
-    });
+    }));
     await fetch(`${API_URL}/api/instalar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tipo: config.versao,
-        repo: config.versao === "custom" ? config.repoCustom : null,
-        clientId: clientId.current,
+        tipo: selected,
+        repo: selected === "custom" ? repoCustom : undefined,
+        clientId,
       }),
     });
   };
 
-  const compilarEmulador = async () => {
+  const compilar = async () => {
     setStatus((prev) => ({
       ...prev,
       emProgresso: true,
@@ -129,132 +112,150 @@ export default function Emulador({ emuladores, setEmuladores }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tipo: nome,
-        clientId: clientId.current,
+        tipo: selected,
+        clientId,
       }),
     });
   };
 
-  const iniciarEmulador = async () => {
+  const gerenciar = async (acao) => {
     setStatus((prev) => ({
       ...prev,
       emProgresso: true,
-      logs: [...prev.logs, "Iniciando emulador..."],
+      logs: [...prev.logs, `Executando ${acao}...`],
     }));
-    await fetch(`${API_URL}/api/iniciar`, {
+    await fetch(`${API_URL}/api/gerenciar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tipo: nome,
-        clientId: clientId.current,
+        acao,
+        tipo: selected,
+        clientId,
       }),
     });
   };
 
-  const pararEmulador = async () => {
+  const desinstalar = async () => {
+    // Apenas remove a pasta do emulador
     setStatus((prev) => ({
       ...prev,
       emProgresso: true,
-      logs: [...prev.logs, "Parando emulador..."],
+      logs: [...prev.logs, "Desinstalando emulador..."],
     }));
-    await fetch(`${API_URL}/api/parar`, {
+    await fetch(`${API_URL}/api/gerenciar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tipo: nome,
-        clientId: clientId.current,
+        acao: "desinstalar",
+        tipo: selected,
+        clientId,
       }),
     });
+    setTimeout(fetchEmuladores, 2000);
   };
 
-  const reiniciarEmulador = async () => {
-    setStatus((prev) => ({
-      ...prev,
-      emProgresso: true,
-      logs: [...prev.logs, "Reiniciando emulador..."],
-    }));
-    await fetch(`${API_URL}/api/reiniciar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tipo: nome,
-        clientId: clientId.current,
-      }),
-    });
-  };
-
-  // Página de detalhes do emulador instalado
-  if (nome) {
-    if (!emuladores.includes(nome)) {
-      return <div className="text-red-400">Emulador não encontrado!</div>;
-    }
-    return (
-      <div className="p-4 text-white space-y-6">
-        <h2 className="text-2xl font-bold flex items-center gap-2 capitalize mb-4">
-          <Server size={24} /> {nome}
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[80vh]">
+      <div className="bg-gray-800 rounded-xl shadow-lg p-8 w-full max-w-xl">
+        <h2 className="text-2xl font-bold flex items-center gap-2 mb-6">
+          <Wrench size={28} /> Gerenciar Emulador
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Status */}
-          <div className="bg-gray-800 rounded-xl p-4 shadow-lg">
-            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-              <CheckCircle className="text-green-400" size={18} /> Status
-            </h3>
-            <div className="space-y-2">
-              <div>
-                <p className="text-sm text-gray-400">Instalação</p>
-                <p className="text-green-400">Instalado</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Compilação</p>
-                <p className={status.compilado ? "text-green-400" : "text-red-400"}>
-                  {status.compilado ? "Compilado" : "Não compilado"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Estado</p>
-                <p className={status.executando ? "text-green-400" : "text-red-400"}>
-                  {status.executando ? "Em execução" : "Parado"}
-                </p>
-              </div>
-            </div>
+        <div className="mb-4">
+          <label className="block text-sm text-gray-400 mb-1">Selecione o Emulador</label>
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-lg"
+            disabled={status.emProgresso}
+          >
+            {EMULADORES.map((emu) => (
+              <option key={emu.value} value={emu.value}>
+                {emu.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {selected === "custom" && (
+          <div className="mb-4">
+            <label className="block text-sm text-gray-400 mb-1">Repositório Git</label>
+            <input
+              type="text"
+              placeholder="https://github.com/usuario/repositorio.git"
+              value={repoCustom}
+              onChange={(e) => setRepoCustom(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded p-2"
+              disabled={status.emProgresso}
+            />
           </div>
-          {/* Controles */}
-          <div className="bg-gray-800 rounded-xl p-4 shadow-lg">
-            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-              <Wrench className="text-blue-400" size={18} /> Controle
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                className="flex items-center gap-2 p-3 rounded justify-center bg-blue-600 hover:bg-blue-700"
-                onClick={compilarEmulador}
-                disabled={status.emProgresso}
-              >
-                <Wrench size={16} /> Compilar
-              </button>
-              <button
-                className="flex items-center gap-2 p-3 rounded justify-center bg-green-600 hover:bg-green-700"
-                onClick={iniciarEmulador}
-                disabled={status.emProgresso}
-              >
-                <Power size={16} /> Iniciar
-              </button>
-              <button
-                className="flex items-center gap-2 p-3 rounded justify-center bg-yellow-600 hover:bg-yellow-700"
-                onClick={reiniciarEmulador}
-                disabled={status.emProgresso}
-              >
-                <RotateCw size={16} /> Reiniciar
-              </button>
-              <button
-                className="flex items-center gap-2 p-3 rounded justify-center bg-red-600 hover:bg-red-700"
-                onClick={pararEmulador}
-                disabled={status.emProgresso}
-              >
-                <Power size={16} /> Parar
-              </button>
-            </div>
+        )}
+
+        {/* Status */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-1">
+            {status.instalado ? (
+              <CheckCircle className="text-green-400" size={20} />
+            ) : (
+              <XCircle className="text-red-400" size={20} />
+            )}
+            <span className={status.instalado ? "text-green-400" : "text-red-400"}>
+              {status.instalado ? "Instalado" : "Não instalado"}
+            </span>
           </div>
         </div>
+
+        {/* Botões de ação */}
+        <div className="flex flex-wrap gap-3 mb-6">
+          {!status.instalado && (
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded bg-green-600 hover:bg-green-700"
+              onClick={instalar}
+              disabled={status.emProgresso}
+            >
+              <Download size={18} /> Instalar
+            </button>
+          )}
+          {status.instalado && (
+            <>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700"
+                onClick={compilar}
+                disabled={status.emProgresso}
+              >
+                <Wrench size={18} /> Compilar
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded bg-green-600 hover:bg-green-700"
+                onClick={() => gerenciar("iniciar")}
+                disabled={status.emProgresso}
+              >
+                <Power size={18} /> Iniciar
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700"
+                onClick={() => gerenciar("reiniciar")}
+                disabled={status.emProgresso}
+              >
+                <RotateCw size={18} /> Reiniciar
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded bg-red-600 hover:bg-red-700"
+                onClick={() => gerenciar("parar")}
+                disabled={status.emProgresso}
+              >
+                <Power size={18} /> Parar
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded bg-gray-600 hover:bg-gray-700"
+                onClick={desinstalar}
+                disabled={status.emProgresso}
+              >
+                <Trash2 size={18} /> Desinstalar
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Logs */}
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
             <Terminal size={20} /> Logs do Sistema
@@ -271,73 +272,6 @@ export default function Emulador({ emuladores, setEmuladores }) {
               <p className="text-gray-500">Nenhuma atividade registrada...</p>
             )}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Página de instalação
-  return (
-    <div className="p-4 text-white space-y-6">
-      <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
-        <Server size={24} /> Instalar Emulador
-      </h2>
-      <div className="space-y-4 mb-6">
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Tipo de Emulador</label>
-          <select
-            value={config.versao}
-            onChange={(e) => setConfig({ ...config, versao: e.target.value })}
-            className="w-full bg-gray-700 border border-gray-600 rounded p-2"
-            disabled={status.emProgresso}
-          >
-            <option value="hercules">Hercules</option>
-            <option value="rathena">rAthena</option>
-            <option value="custom">Customizado</option>
-          </select>
-        </div>
-        {config.versao === "custom" && (
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              Repositório Git
-            </label>
-            <input
-              type="text"
-              placeholder="https://github.com/usuario/repositorio.git"
-              value={config.repoCustom}
-              onChange={(e) => setConfig({ ...config, repoCustom: e.target.value })}
-              className="w-full bg-gray-700 border border-gray-600 rounded p-2"
-              disabled={status.emProgresso}
-            />
-          </div>
-        )}
-        <button
-          onClick={instalarEmulador}
-          disabled={status.emProgresso || !wsReady}
-          className={`flex items-center gap-2 p-3 rounded justify-center ${
-            !status.emProgresso && wsReady
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-gray-600 cursor-not-allowed"
-          }`}
-        >
-          <Download size={18} /> Instalar
-        </button>
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
-          <Terminal size={20} /> Logs do Sistema
-        </h3>
-        <div className="bg-black text-green-400 font-mono text-sm p-3 rounded h-64 overflow-y-auto">
-          {status.logs.length > 0 ? (
-            <>
-              {status.logs.map((log, index) => (
-                <div key={index}>{log}</div>
-              ))}
-              <div ref={logsEndRef} />
-            </>
-          ) : (
-            <p className="text-gray-500">Nenhuma atividade registrada...</p>
-          )}
         </div>
       </div>
     </div>
