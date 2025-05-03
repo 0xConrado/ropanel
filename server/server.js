@@ -214,13 +214,16 @@ app.get('/api/os', (req, res) => {
   });
 });
 
-// Endpoint para listar painéis realmente instalados
+// Endpoint para listar painéis realmente instalados (ATUALIZADO)
 app.get('/api/panels/installed', (req, res) => {
   const checks = [
-    { name: "webmin", cmd: "systemctl is-active webmin" },
-    { name: "hestiacp", cmd: "systemctl is-active hestia" },
-    { name: "froxlor", cmd: "systemctl is-active froxlor" },
-    // Adicione outros painéis aqui conforme necessário
+    { name: "webmin",     cmd: "systemctl is-active webmin" },
+    { name: "hestiacp",   cmd: "systemctl is-active hestia" },
+    { name: "froxlor",    cmd: "systemctl is-active froxlor" },
+    { name: "aapanel",    cmd: "systemctl is-active btpanel" },
+    { name: "cpanel",     cmd: "systemctl is-active cpanel" },
+    { name: "cyberpanel", cmd: "systemctl is-active lscpd" },
+    { name: "ispconfig",  cmd: "systemctl is-active apache2 || systemctl is-active nginx" }
   ];
 
   let installed = [];
@@ -241,7 +244,7 @@ app.get('/api/panels/installed', (req, res) => {
   });
 });
 
-// NOVO ENDPOINT: Lista emuladores instalados
+// Endpoint para listar emuladores instalados (ATUALIZADO)
 app.get('/api/emulators/installed', (req, res) => {
   // Lista as pastas dentro de EMULADOR_DIR como emuladores instalados
   fs.readdir(EMULADOR_DIR, { withFileTypes: true }, (err, files) => {
@@ -280,7 +283,7 @@ app.post('/install/panel', (req, res) => {
   } else if (panel === "ispconfig" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian"))) {
     installCmd = "wget -O - https://get.ispconfig.org | sh -s -- --use-nginx --unattended-upgrades";
   } else if (panel === "aapanel" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian") || soName.toLowerCase().includes("centos"))) {
-    installCmd = "wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh";
+    installCmd = "wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && yes | bash install.sh && ufw allow 13349/tcp && ufw allow 888/tcp && ufw allow 80/tcp && ufw allow 443/tcp && ufw allow 20/tcp && ufw allow 21/tcp";
   } else if (panel === "froxlor" && (soName.toLowerCase().includes("ubuntu") || soName.toLowerCase().includes("debian"))) {
     installCmd = "apt update && apt install -y froxlor";
   } else {
