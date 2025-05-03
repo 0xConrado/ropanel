@@ -31,7 +31,8 @@ function getPlatformCommands(tipo, operacao) {
 
   const commands = {
     linux: {
-      compilar: `cd ${basePath} && make clean && make server`,
+      // Executa configure (se existir), make clean (se Makefile existir), e make server
+      compilar: `cd ${basePath} && [ -f configure ] && chmod +x configure && ./configure ; [ -f Makefile ] && make clean || true ; make server`,
       iniciar: `cd ${basePath} && ./start-server`,
       parar: `cd ${basePath} && ./stop-server`,
       reiniciar: `cd ${basePath} && ./stop-server && ./start-server`
