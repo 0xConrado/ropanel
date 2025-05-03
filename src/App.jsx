@@ -6,10 +6,10 @@ import Emulador from "./pages/Emulador";
 import FluxCP from "./pages/FluxCP";
 import Forum from "./pages/Forum";
 import Configuracoes from "./pages/Configuracoes";
+import ConfigurarBanco from "./pages/ConfigurarBanco"; // <--- adicione este import
 import NotFound from "./pages/NotFound";
 
 function App() {
-  // Remove qualquer lógica de tema
   return (
     <Router>
       <div className="flex min-h-screen bg-gray-900 text-white">
@@ -21,7 +21,11 @@ function App() {
             <Route path="/emulador" element={<Emulador />} />
             <Route path="/fluxcp" element={<FluxCP />} />
             <Route path="/forum" element={<Forum />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
+            {/* Rotas aninhadas para Configurações */}
+            <Route path="/configuracoes" element={<Configuracoes />}>
+              <Route path="banco" element={<ConfigurarBanco />} />
+              {/* Adicione outros submenus aqui */}
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
