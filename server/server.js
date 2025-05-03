@@ -214,6 +214,34 @@ app.get('/api/os', (req, res) => {
   });
 });
 
+// Endpoint para listar painéis realmente instalados
+app.get('/api/panels/installed', (req, res) => {
+  // Adicione checagens para outros painéis conforme necessário
+  const checks = [
+    { name: "webmin", cmd: "systemctl is-active webmin" },
+    { name: "hestiacp", cmd: "systemctl is-active hestia" },
+    { name: "froxlor", cmd: "systemctl is-active froxlor" },
+    // Adicione outros painéis aqui conforme necessário
+  ];
+
+  let installed = [];
+  let checked = 0;
+
+  if (checks.length === 0) return res.json({ installed: [] });
+
+  checks.forEach(check => {
+    exec(check.cmd, (err, stdout) => {
+      if (stdout && stdout.trim() === "active") {
+        installed.push(check.name);
+      }
+      checked++;
+      if (checked === checks.length) {
+        res.json({ installed });
+      }
+    });
+  });
+});
+
 // Endpoint para instalar painel (Webmin, cPanel, HestiaCP, CyberPanel, ISPConfig, aaPanel, Froxlor)
 app.post('/install/panel', (req, res) => {
   const { panel } = req.body;

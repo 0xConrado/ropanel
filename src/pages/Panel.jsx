@@ -13,24 +13,12 @@ const panels = [
   { name: "Froxlor", value: "froxlor", supported: ["Ubuntu", "Debian"] },
 ];
 
-// Simulação de persistência local (troque por backend se quiser real)
-function getInstalledPanels() {
-  try {
-    return JSON.parse(localStorage.getItem("installedPanels") || "[]");
-  } catch {
-    return [];
-  }
-}
-function setInstalledPanels(panels) {
-  localStorage.setItem("installedPanels", JSON.stringify(panels));
-}
-
 export default function Panel() {
   const [osName, setOsName] = useState("");
   const [selectedPanel, setSelectedPanel] = useState("");
   const [status, setStatus] = useState("");
   const [installing, setInstalling] = useState(false);
-  const [installedPanels, setInstalledPanelsState] = useState(getInstalledPanels());
+  const [installedPanels, setInstalledPanels] = useState([]);
   const [logs, setLogs] = useState([]);
   const logsEndRef = useRef(null);
 
@@ -38,16 +26,14 @@ export default function Panel() {
     fetch(`${API_URL}/api/os`)
       .then(res => res.json())
       .then(data => setOsName(data.name));
+    fetch(`${API_URL}/api/panels/installed`)
+      .then(res => res.json())
+      .then(data => setInstalledPanels(data.installed || []));
   }, []);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
-
-  // Atualiza localStorage sempre que instalar/desinstalar
-  useEffect(() => {
-    setInstalledPanels(installedPanels);
-  }, [installedPanels]);
 
   // Só mostra opções suportadas pelo SO
   const supportedPanels = panels.filter(panel =>
@@ -76,7 +62,10 @@ export default function Panel() {
       const data = await res.text();
       setStatus(data);
       setLogs(prev => [...prev, "✅ Painel instalado!"]);
-      setInstalledPanelsState(prev => [...prev, selectedPanel]);
+      // Atualiza lista de instalados
+      fetch(`${API_URL}/api/panels/installed`)
+        .then(res => res.json())
+        .then(data => setInstalledPanels(data.installed || []));
     } catch (err) {
       setStatus("Erro ao instalar o painel.");
       setLogs(prev => [...prev, "❌ Erro ao instalar o painel."]);
@@ -123,7 +112,10 @@ export default function Panel() {
       const data = await res.text();
       setStatus(data);
       setLogs(prev => [...prev, "✅ Painel desinstalado!"]);
-      setInstalledPanelsState(prev => prev.filter(p => p !== selectedPanel));
+      // Atualiza lista de instalados
+      fetch(`${API_URL}/api/panels/installed`)
+        .then(res => res.json())
+        .then(data => setInstalledPanels(data.installed || []));
     } catch (err) {
       setStatus("Erro ao desinstalar o painel.");
       setLogs(prev => [...prev, "❌ Erro ao desinstalar o painel."]);
