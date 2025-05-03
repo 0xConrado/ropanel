@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const databaseRoutes = require('./routes/database');
 const { exec, execSync, spawn } = require('child_process');
 const http = require('http');
 const WebSocket = require('ws');
@@ -18,6 +19,8 @@ const runningServers = {}; // Para guardar os processos spawn
 
 app.use(cors());
 app.use(express.json());
+
+app.use(databaseRoutes);
 
 if (!fs.existsSync(EMULADOR_DIR)) {
   fs.mkdirSync(EMULADOR_DIR, { recursive: true });
