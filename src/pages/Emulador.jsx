@@ -26,7 +26,7 @@ export default function Emulador() {
 
   // WebSocket para logs em tempo real
   useEffect(() => {
-    ws.current = new window.WebSocket(API_URL.replace(/^http/, "ws"));
+    ws.current = new window.WebSocket(`ws://${window.location.hostname}:3001`);
     ws.current.onopen = () => {
       ws.current.send(JSON.stringify({ type: "register", clientId }));
     };
