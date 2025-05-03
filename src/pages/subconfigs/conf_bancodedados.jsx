@@ -34,7 +34,7 @@ export default function ConfBancoDeDados() {
   };
 
   return (
-    <section className="bg-gray-800 rounded-lg p-6 shadow mb-6">
+    <section>
       <h2 className="text-xl font-bold text-white mb-4">Banco de Dados</h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
