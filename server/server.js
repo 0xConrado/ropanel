@@ -104,7 +104,7 @@ function sendWsMessage(clientId, type, data) {
   }
 }
 
-// Endpoint para instalar emulador
+// Endpoint para instalar emulador (agora com logs em tempo real)
 app.post('/api/instalar', (req, res) => {
   const { tipo, repo, clientId } = req.body;
 
@@ -113,23 +113,28 @@ app.post('/api/instalar', (req, res) => {
   if (!registeredClients.has(clientId)) return res.status(400).json({ error: 'Conecte-se via WebSocket e registre-se primeiro', requiresRegistration: true });
 
   let comando = '';
-  switch (tipo) {
-    case 'hercules': comando = 'git clone https://github.com/HerculesWS/Hercules.git'; break;
-    case 'rathena': comando = 'git clone https://github.com/rathena/rathena.git'; break;
-    case 'custom':
-      if (!repo.startsWith('https://')) return res.status(400).json({ error: 'URL deve começar com https://' });
-      comando = `git clone ${repo}`;
-      break;
-    default: return res.status(400).json({ error: 'Tipo de emulador inválido' });
+  let args = [];
+  if (tipo === 'hercules') {
+    comando = 'git';
+    args = ['clone', 'https://github.com/HerculesWS/Hercules.git'];
+  } else if (tipo === 'rathena') {
+    comando = 'git';
+    args = ['clone', 'https://github.com/rathena/rathena.git'];
+  } else if (tipo === 'custom') {
+    if (!repo.startsWith('https://')) return res.status(400).json({ error: 'URL deve começar com https://' });
+    comando = 'git';
+    args = ['clone', repo];
+  } else {
+    return res.status(400).json({ error: 'Tipo de emulador inválido' });
   }
 
   res.json({ success: true, message: 'Processo de instalação iniciado' });
   sendWsMessage(clientId, 'status', { data: 'Iniciando instalação...' });
 
-  const child = exec(comando, { cwd: EMULADOR_DIR });
+  const child = spawn(comando, args, { cwd: EMULADOR_DIR });
 
   child.stdout.on('data', (data) => sendWsMessage(clientId, 'log', { data: data.toString() }));
-  child.stderr.on('data', (data) => sendWsMessage(clientId, 'error', { data: data.toString() }));
+  child.stderr.on('data', (data) => sendWsMessage(clientId, 'log', { data: data.toString() }));
   child.on('close', (code) => {
     if (code === 0) {
       sendWsMessage(clientId, 'success', { data: 'Instalação concluída com sucesso!' });
