@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Server, PanelTop, Globe, MessageCircle } from "lucide-react";
+import { Home, Server, PanelTop, Globe, MessageCircle, Settings } from "lucide-react";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -25,6 +25,9 @@ export default function Sidebar() {
         </Link>
         <Link to="/forum" className={`flex items-center gap-2 p-2 rounded ${isActive("/forum")}`}>
           <MessageCircle size={18} /> Forum
+        </Link>
+        <Link to="/configuracoes" className={`flex items-center gap-2 p-2 rounded ${isActive("/configuracoes")}`}>
+          <Settings size={18} /> Configurações
         </Link>
       </nav>
     </div>
