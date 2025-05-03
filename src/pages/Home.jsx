@@ -143,10 +143,9 @@ export default function Home() {
               <img
                 src={iconSrc}
                 alt={painelData.name}
-                className="w-12 h-12 mb-2 mx-auto object-contain"
+                className="w-12 h-12 mb-2 object-contain" // alinhado à esquerda
                 style={{ filter: "drop-shadow(0 0 4px #fff8)" }}
                 onError={() => {
-                  // Se falhar o SVG, tenta PNG
                   if (iconSrc && iconSrc.endsWith(".svg")) {
                     setIconSrc(`${painelData.iconBase}.png`);
                   }
