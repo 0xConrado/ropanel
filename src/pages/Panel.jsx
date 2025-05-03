@@ -16,12 +16,12 @@ const panels = [
 export default function Panel() {
   const [osName, setOsName] = useState("");
   const [selectedPanel, setSelectedPanel] = useState("");
-  const [status, setStatus] = useState("");
   const [installing, setInstalling] = useState(false);
   const [installedPanels, setInstalledPanels] = useState([]);
   const [logs, setLogs] = useState([]);
   const logsEndRef = useRef(null);
 
+  // Buscar SO e painéis instalados ao carregar
   useEffect(() => {
     fetch(`${API_URL}/api/os`)
       .then(res => res.json())
@@ -31,6 +31,7 @@ export default function Panel() {
       .then(data => setInstalledPanels(data.installed || []));
   }, []);
 
+  // Scroll automático para o fim dos logs
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
@@ -46,13 +47,9 @@ export default function Panel() {
 
   // Instalar painel
   const handleInstall = async () => {
-    if (!selectedPanel) {
-      setStatus("Selecione um painel para instalar.");
-      return;
-    }
-    setStatus("");
+    if (!selectedPanel) return;
     setInstalling(true);
-    setLogs(["Iniciando instalação..."]);
+    setLogs(prev => [...prev, `Iniciando instalação de ${selectedPanel}...`]);
     try {
       const res = await fetch(`${API_URL}/install/panel`, {
         method: "POST",
@@ -60,14 +57,12 @@ export default function Panel() {
         body: JSON.stringify({ panel: selectedPanel }),
       });
       const data = await res.text();
-      setStatus(data);
-      setLogs(prev => [...prev, "✅ Painel instalado!"]);
+      setLogs(prev => [...prev, data, "✅ Painel instalado!"]);
       // Atualiza lista de instalados
-      fetch(`${API_URL}/api/panels/installed`)
+      await fetch(`${API_URL}/api/panels/installed`)
         .then(res => res.json())
         .then(data => setInstalledPanels(data.installed || []));
     } catch (err) {
-      setStatus("Erro ao instalar o painel.");
       setLogs(prev => [...prev, "❌ Erro ao instalar o painel."]);
     } finally {
       setInstalling(false);
@@ -77,9 +72,8 @@ export default function Panel() {
   // Reinstalar painel
   const handleReinstall = async () => {
     if (!selectedPanel) return;
-    setStatus("");
     setInstalling(true);
-    setLogs(["Reinstalando painel..."]);
+    setLogs(prev => [...prev, `Reinstalando painel ${selectedPanel}...`]);
     try {
       const res = await fetch(`${API_URL}/install/panel`, {
         method: "POST",
@@ -87,10 +81,12 @@ export default function Panel() {
         body: JSON.stringify({ panel: selectedPanel }),
       });
       const data = await res.text();
-      setStatus(data);
-      setLogs(prev => [...prev, "✅ Painel reinstalado!"]);
+      setLogs(prev => [...prev, data, "✅ Painel reinstalado!"]);
+      // Atualiza lista de instalados
+      await fetch(`${API_URL}/api/panels/installed`)
+        .then(res => res.json())
+        .then(data => setInstalledPanels(data.installed || []));
     } catch (err) {
-      setStatus("Erro ao reinstalar o painel.");
       setLogs(prev => [...prev, "❌ Erro ao reinstalar o painel."]);
     } finally {
       setInstalling(false);
@@ -100,9 +96,8 @@ export default function Panel() {
   // Desinstalar painel
   const handleUninstall = async () => {
     if (!selectedPanel) return;
-    setStatus("");
     setInstalling(true);
-    setLogs(["Desinstalando painel..."]);
+    setLogs(prev => [...prev, `Desinstalando painel ${selectedPanel}...`]);
     try {
       const res = await fetch(`${API_URL}/uninstall/panel`, {
         method: "POST",
@@ -110,14 +105,12 @@ export default function Panel() {
         body: JSON.stringify({ panel: selectedPanel }),
       });
       const data = await res.text();
-      setStatus(data);
-      setLogs(prev => [...prev, "✅ Painel desinstalado!"]);
+      setLogs(prev => [...prev, data, "✅ Painel desinstalado!"]);
       // Atualiza lista de instalados
-      fetch(`${API_URL}/api/panels/installed`)
+      await fetch(`${API_URL}/api/panels/installed`)
         .then(res => res.json())
         .then(data => setInstalledPanels(data.installed || []));
     } catch (err) {
-      setStatus("Erro ao desinstalar o painel.");
       setLogs(prev => [...prev, "❌ Erro ao desinstalar o painel."]);
     } finally {
       setInstalling(false);
@@ -232,9 +225,6 @@ export default function Panel() {
           )}
         </div>
       </div>
-      {status && !installing && (
-        <div className="mt-4 font-semibold text-green-700 text-center">{status}</div>
-      )}
     </div>
   );
 }
