@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Download, Terminal, Power, RotateCw, Wrench, Trash2, CheckCircle, XCircle } from "lucide-react";
+import EmuladorStatus from "./EmuladorStatus";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -20,24 +21,46 @@ export default function Emulador() {
     logs: [],
   });
   const [emuladoresInstalados, setEmuladoresInstalados] = useState([]);
+  const [showServers, setShowServers] = useState(false);
+  const [logs, setLogs] = useState({
+    system: [],
+    login: [],
+    char: [],
+    map: [],
+  });
   const [clientId] = useState(() => Math.random().toString(36).substring(2, 15));
   const ws = useRef(null);
   const logsEndRef = useRef(null);
 
   // WebSocket para logs em tempo real
   useEffect(() => {
-    ws.current = new window.WebSocket(`ws://${window.location.hostname}:3001`);
+    ws.current = new window.WebSocket(API_URL.replace(/^http/, "ws"));
     ws.current.onopen = () => {
       ws.current.send(JSON.stringify({ type: "register", clientId }));
     };
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === "log" || data.type === "status" || data.type === "error" || data.type === "success") {
+
+      // Logs do sistema
+      if (["log", "status", "error", "success"].includes(data.type) && !data.server) {
         setStatus((prev) => ({
           ...prev,
           logs: [...prev.logs, data.data]
         }));
+        setLogs((prev) => ({
+          ...prev,
+          system: [...prev.system, data.data]
+        }));
       }
+
+      // Logs dos servidores individuais
+      if (data.type === "log" && data.server) {
+        setLogs((prev) => ({
+          ...prev,
+          [data.server]: [...(prev[data.server] || []), data.data]
+        }));
+      }
+
       if (data.type === "complete" && data.operacao === "instalar") {
         fetchEmuladores();
         setStatus((prev) => ({
@@ -81,6 +104,13 @@ export default function Emulador() {
       rodando: false,
       emProgresso: false,
     }));
+    setLogs({
+      system: [],
+      login: [],
+      char: [],
+      map: [],
+    });
+    setShowServers(false);
     // eslint-disable-next-line
   }, [selected, emuladoresInstalados]);
 
@@ -133,10 +163,13 @@ export default function Emulador() {
         clientId,
       }),
     });
+    // Se for iniciar, mostrar os logs dos servidores
+    if (acao === "iniciar") {
+      setShowServers(true);
+    }
   };
 
   const desinstalar = async () => {
-    // Apenas remove a pasta do emulador
     setStatus((prev) => ({
       ...prev,
       emProgresso: true,
@@ -155,8 +188,8 @@ export default function Emulador() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh]">
-      <div className="bg-gray-800 rounded-xl shadow-lg p-8 w-full max-w-xl">
+    <div className="flex flex-col items-center w-full h-full p-4">
+      <div className="w-full max-w-4xl">
         <h2 className="text-2xl font-bold flex items-center gap-2 mb-6">
           <Wrench size={28} /> Gerenciar Emulador
         </h2>
@@ -255,15 +288,15 @@ export default function Emulador() {
           )}
         </div>
 
-        {/* Logs */}
+        {/* Logs do Sistema */}
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
             <Terminal size={20} /> Logs do Sistema
           </h3>
           <div className="bg-black text-green-400 font-mono text-sm p-3 rounded h-64 overflow-y-auto">
-            {status.logs.length > 0 ? (
+            {logs.system.length > 0 ? (
               <>
-                {status.logs.map((log, index) => (
+                {logs.system.map((log, index) => (
                   <div key={index}>{log}</div>
                 ))}
                 <div ref={logsEndRef} />
@@ -273,6 +306,9 @@ export default function Emulador() {
             )}
           </div>
         </div>
+
+        {/* Logs dos servidores */}
+        {showServers && <EmuladorStatus logs={logs} />}
       </div>
     </div>
   );
