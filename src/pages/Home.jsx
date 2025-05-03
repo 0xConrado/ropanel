@@ -4,13 +4,50 @@ import { motion } from "framer-motion";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// Mapeamento dos painéis: nome, ícone e URL
+const panelInfo = {
+  aapanel: {
+    name: "aaPanel",
+    icon: "/icons/aapanel.png",
+    url: (ip) => `https://${ip}:13349/`,
+  },
+  webmin: {
+    name: "Webmin",
+    icon: "/icons/webmin.png",
+    url: (ip) => `https://${ip}:10000/`,
+  },
+  hestiacp: {
+    name: "HestiaCP",
+    icon: "/icons/hestiacp.png",
+    url: (ip) => `https://${ip}:8083/`,
+  },
+  froxlor: {
+    name: "Froxlor",
+    icon: "/icons/froxlor.png",
+    url: (ip) => `https://${ip}/froxlor/`,
+  },
+  cpanel: {
+    name: "cPanel",
+    icon: "/icons/cpanel.png",
+    url: (ip) => `https://${ip}:2087/`,
+  },
+  cyberpanel: {
+    name: "CyberPanel",
+    icon: "/icons/cyberpanel.png",
+    url: (ip) => `https://${ip}:8090/`,
+  },
+  ispconfig: {
+    name: "ISPConfig",
+    icon: "/icons/ispconfig.png",
+    url: (ip) => `https://${ip}:8080/`,
+  },
+};
+
 export default function Home() {
-  // Estados para status dinâmico
   const [installedPanels, setInstalledPanels] = useState([]);
   const [installedEmulators, setInstalledEmulators] = useState([]);
-  // Você pode adicionar mais estados para outros serviços futuramente
+  const [serverIp, setServerIp] = useState("168.231.99.143"); // Coloque seu IP fixo ou busque via API
 
-  // Busca status do backend ao carregar
   useEffect(() => {
     fetch(`${API_URL}/api/panels/installed`)
       .then(res => res.json())
@@ -18,20 +55,17 @@ export default function Home() {
     fetch(`${API_URL}/api/emulators/installed`)
       .then(res => res.json())
       .then(data => setInstalledEmulators(data.installed || []));
+    // Se quiser buscar o IP dinamicamente, pode usar uma API ou variável de ambiente
   }, []);
 
-  // Exemplo: considere "webmin" como painel principal e "hercules" como emulador principal
-  const emuladorInstalado = installedEmulators.length > 0; // true se qualquer emulador instalado
-  const painelInstalado = installedPanels.length > 0; // true se qualquer painel instalado
-
-  // Para mostrar nomes dos instalados (exemplo: Webmin, Hercules)
-  const painelNome = installedPanels.length > 0 ? installedPanels[0].charAt(0).toUpperCase() + installedPanels[0].slice(1) : "Nenhum";
-  const emuladorNome = installedEmulators.length > 0 ? installedEmulators[0].charAt(0).toUpperCase() + installedEmulators[0].slice(1) : "Nenhum";
+  const emuladorInstalado = installedEmulators.length > 0;
+  const painelInstalado = installedPanels.length > 0;
+  const painelKey = painelInstalado ? installedPanels[0] : null;
+  const painelData = painelKey ? panelInfo[painelKey] : null;
 
   // Exemplo: status fixo para FluxCP e Fórum (você pode integrar depois)
   const fluxcpInstalado = false;
   const forumInstalado = false;
-  const servidorLigado = false;
 
   const cardAnimation = {
     hidden: { opacity: 0, y: 20 },
@@ -64,7 +98,7 @@ export default function Home() {
               {emuladorInstalado ? (
                 <>
                   <CheckCircle className="inline w-4 h-4 mr-1" />
-                  Instalado ({emuladorNome})
+                  Instalado ({installedEmulators[0]})
                 </>
               ) : (
                 <>
@@ -81,32 +115,47 @@ export default function Home() {
 
         {/* Painel */}
         <motion.div
-          className="bg-gray-800 rounded-xl p-4 shadow-lg relative"
+          className="bg-gray-800 rounded-xl p-4 shadow-lg relative cursor-pointer"
           variants={cardAnimation}
           initial="hidden"
           animate="visible"
           custom={1}
+          onClick={() => {
+            if (painelInstalado && painelData) {
+              window.open(painelData.url(serverIp), "_blank");
+            }
+          }}
         >
-          <Server className="w-8 h-8 text-blue-400 mb-2" />
-          <h2 className="text-xl font-bold mb-2">Painel</h2>
-          <p>
-            Status:{" "}
-            <span className={painelInstalado ? "text-green-400" : "text-red-400"}>
-              {painelInstalado ? (
-                <>
+          {painelInstalado && painelData ? (
+            <>
+              <img
+                src={painelData.icon}
+                alt={painelData.name}
+                className="w-12 h-12 mb-2 mx-auto"
+                style={{ filter: "drop-shadow(0 0 4px #fff8)" }}
+              />
+              <h2 className="text-xl font-bold mb-2">{painelData.name}</h2>
+              <p>
+                Status:{" "}
+                <span className="text-green-400">
                   <CheckCircle className="inline w-4 h-4 mr-1" />
-                  Instalado ({painelNome})
-                </>
-              ) : (
-                <>
+                  Instalado
+                </span>
+              </p>
+            </>
+          ) : (
+            <>
+              <Server className="w-8 h-8 text-blue-400 mb-2" />
+              <h2 className="text-xl font-bold mb-2">Painel</h2>
+              <p>
+                Status:{" "}
+                <span className="text-red-400">
                   <XCircle className="inline w-4 h-4 mr-1" />
                   Não Instalado
-                </>
-              )}
-            </span>
-          </p>
-          {!painelInstalado && (
-            <span className="absolute top-2 right-2 bg-red-500 text-xs px-2 py-0.5 rounded-full">Novo</span>
+                </span>
+              </p>
+              <span className="absolute top-2 right-2 bg-red-500 text-xs px-2 py-0.5 rounded-full">Novo</span>
+            </>
           )}
         </motion.div>
 
