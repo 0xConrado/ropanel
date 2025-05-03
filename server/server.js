@@ -11,7 +11,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const platform = os.platform();
-const EMULADOR_DIR = path.join(__dirname, 'emuladores');
+const EMULADOR_DIR = '/root/Emulador';
 const registeredClients = new Map();
 
 app.use(cors());
