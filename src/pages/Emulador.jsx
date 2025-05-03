@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Server, Download, Terminal, Power, RotateCw, Wrench } from "lucide-react";
+import { Server, Download, Terminal, Power, RotateCw, Wrench, XCircle, CheckCircle } from "lucide-react";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 export default function Emulador({ emuladores, setEmuladores }) {
   const { nome } = useParams();
@@ -23,7 +25,7 @@ export default function Emulador({ emuladores, setEmuladores }) {
 
   // WebSocket para logs em tempo real
   useEffect(() => {
-    ws.current = new WebSocket(`ws://localhost:3001`);
+    ws.current = new window.WebSocket(API_URL.replace(/^http/, "ws"));
     ws.current.onopen = () => {
       setWsReady(true);
       ws.current.send(
@@ -41,18 +43,51 @@ export default function Emulador({ emuladores, setEmuladores }) {
           logs: [...prev.logs, ...data.data.split("\n").filter((line) => line.trim())],
         }));
       }
-      if (data.type === "complete" && data.code === 0 && data.operacao === "instalar") {
-        if (!emuladores.includes(config.versao)) {
-          setEmuladores((prev) => [...prev, config.versao]);
+      if (data.type === "complete") {
+        if (data.operacao === "instalar" && data.code === 0) {
+          if (!emuladores.includes(config.versao)) {
+            setEmuladores((prev) => [...prev, config.versao]);
+          }
+          setStatus((prev) => ({
+            ...prev,
+            logs: [...prev.logs, "✅ Emulador instalado!"],
+            emProgresso: false,
+            instalado: true,
+          }));
         }
-        setStatus((prev) => ({
-          ...prev,
-          logs: [...prev.logs, "✅ Emulador instalado!"],
-          emProgresso: false,
-          instalado: true,
-        }));
+        if (data.operacao === "compilar") {
+          setStatus((prev) => ({
+            ...prev,
+            logs: [...prev.logs, data.code === 0 ? "✅ Compilação concluída!" : "❌ Erro na compilação."],
+            emProgresso: false,
+            compilado: data.code === 0,
+          }));
+        }
+        if (data.operacao === "iniciar") {
+          setStatus((prev) => ({
+            ...prev,
+            logs: [...prev.logs, data.code === 0 ? "✅ Emulador iniciado!" : "❌ Erro ao iniciar."],
+            emProgresso: false,
+            executando: data.code === 0,
+          }));
+        }
+        if (data.operacao === "parar") {
+          setStatus((prev) => ({
+            ...prev,
+            logs: [...prev.logs, data.code === 0 ? "✅ Emulador parado!" : "❌ Erro ao parar."],
+            emProgresso: false,
+            executando: false,
+          }));
+        }
+        if (data.operacao === "reiniciar") {
+          setStatus((prev) => ({
+            ...prev,
+            logs: [...prev.logs, data.code === 0 ? "✅ Emulador reiniciado!" : "❌ Erro ao reiniciar."],
+            emProgresso: false,
+            executando: data.code === 0,
+          }));
+        }
       }
-      // Adapte para outros tipos de mensagem se necessário
     };
     ws.current.onclose = () => setWsReady(false);
     ws.current.onerror = () => setWsReady(false);
@@ -64,7 +99,7 @@ export default function Emulador({ emuladores, setEmuladores }) {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [status.logs]);
 
-  // Instalação do emulador
+  // Funções de controle
   const instalarEmulador = async () => {
     setStatus({
       compilado: false,
@@ -73,7 +108,7 @@ export default function Emulador({ emuladores, setEmuladores }) {
       logs: ["Iniciando instalação..."],
       instalado: false,
     });
-    await fetch("http://localhost:3001/api/instalar", {
+    await fetch(`${API_URL}/api/instalar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -84,20 +119,86 @@ export default function Emulador({ emuladores, setEmuladores }) {
     });
   };
 
-  // Exibe status e comandos do emulador instalado
+  const compilarEmulador = async () => {
+    setStatus((prev) => ({
+      ...prev,
+      emProgresso: true,
+      logs: [...prev.logs, "Iniciando compilação..."],
+    }));
+    await fetch(`${API_URL}/api/compilar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: nome,
+        clientId: clientId.current,
+      }),
+    });
+  };
+
+  const iniciarEmulador = async () => {
+    setStatus((prev) => ({
+      ...prev,
+      emProgresso: true,
+      logs: [...prev.logs, "Iniciando emulador..."],
+    }));
+    await fetch(`${API_URL}/api/iniciar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: nome,
+        clientId: clientId.current,
+      }),
+    });
+  };
+
+  const pararEmulador = async () => {
+    setStatus((prev) => ({
+      ...prev,
+      emProgresso: true,
+      logs: [...prev.logs, "Parando emulador..."],
+    }));
+    await fetch(`${API_URL}/api/parar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: nome,
+        clientId: clientId.current,
+      }),
+    });
+  };
+
+  const reiniciarEmulador = async () => {
+    setStatus((prev) => ({
+      ...prev,
+      emProgresso: true,
+      logs: [...prev.logs, "Reiniciando emulador..."],
+    }));
+    await fetch(`${API_URL}/api/reiniciar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: nome,
+        clientId: clientId.current,
+      }),
+    });
+  };
+
+  // Página de detalhes do emulador instalado
   if (nome) {
     if (!emuladores.includes(nome)) {
       return <div className="text-red-400">Emulador não encontrado!</div>;
     }
     return (
-      <div>
+      <div className="p-4 text-white space-y-6">
         <h2 className="text-2xl font-bold flex items-center gap-2 capitalize mb-4">
           <Server size={24} /> {nome}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Status */}
-          <div className="bg-gray-800 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">Status</h3>
+          <div className="bg-gray-800 rounded-xl p-4 shadow-lg">
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <CheckCircle className="text-green-400" size={18} /> Status
+            </h3>
             <div className="space-y-2">
               <div>
                 <p className="text-sm text-gray-400">Instalação</p>
@@ -118,19 +219,37 @@ export default function Emulador({ emuladores, setEmuladores }) {
             </div>
           </div>
           {/* Controles */}
-          <div className="bg-gray-800 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">Controle</h3>
+          <div className="bg-gray-800 rounded-xl p-4 shadow-lg">
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <Wrench className="text-blue-400" size={18} /> Controle
+            </h3>
             <div className="grid grid-cols-2 gap-3">
-              <button className="flex items-center gap-2 p-2 rounded justify-center bg-blue-600 hover:bg-blue-700">
+              <button
+                className="flex items-center gap-2 p-3 rounded justify-center bg-blue-600 hover:bg-blue-700"
+                onClick={compilarEmulador}
+                disabled={status.emProgresso}
+              >
                 <Wrench size={16} /> Compilar
               </button>
-              <button className="flex items-center gap-2 p-2 rounded justify-center bg-green-600 hover:bg-green-700">
+              <button
+                className="flex items-center gap-2 p-3 rounded justify-center bg-green-600 hover:bg-green-700"
+                onClick={iniciarEmulador}
+                disabled={status.emProgresso}
+              >
                 <Power size={16} /> Iniciar
               </button>
-              <button className="flex items-center gap-2 p-2 rounded justify-center bg-yellow-600 hover:bg-yellow-700">
+              <button
+                className="flex items-center gap-2 p-3 rounded justify-center bg-yellow-600 hover:bg-yellow-700"
+                onClick={reiniciarEmulador}
+                disabled={status.emProgresso}
+              >
                 <RotateCw size={16} /> Reiniciar
               </button>
-              <button className="flex items-center gap-2 p-2 rounded justify-center bg-red-600 hover:bg-red-700">
+              <button
+                className="flex items-center gap-2 p-3 rounded justify-center bg-red-600 hover:bg-red-700"
+                onClick={pararEmulador}
+                disabled={status.emProgresso}
+              >
                 <Power size={16} /> Parar
               </button>
             </div>
@@ -159,7 +278,7 @@ export default function Emulador({ emuladores, setEmuladores }) {
 
   // Página de instalação
   return (
-    <div>
+    <div className="p-4 text-white space-y-6">
       <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
         <Server size={24} /> Instalar Emulador
       </h2>
