@@ -4,41 +4,41 @@ import { motion } from "framer-motion";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Mapeamento dos painéis: nome, ícone e URL
+// Mapeamento dos painéis: nome, ícone base (sem extensão) e URL
 const panelInfo = {
   aapanel: {
     name: "aaPanel",
-    icon: "/icons/aapanel.png",
+    iconBase: "/icons/aapanel",
     url: (ip) => `https://${ip}:13349/`,
   },
   webmin: {
     name: "Webmin",
-    icon: "/icons/webmin.png",
+    iconBase: "/icons/webmin",
     url: (ip) => `https://${ip}:10000/`,
   },
   hestiacp: {
     name: "HestiaCP",
-    icon: "/icons/hestiacp.png",
+    iconBase: "/icons/hestiacp",
     url: (ip) => `https://${ip}:8083/`,
   },
   froxlor: {
     name: "Froxlor",
-    icon: "/icons/froxlor.png",
+    iconBase: "/icons/froxlor",
     url: (ip) => `https://${ip}/froxlor/`,
   },
   cpanel: {
     name: "cPanel",
-    icon: "/icons/cpanel.png",
+    iconBase: "/icons/cpanel",
     url: (ip) => `https://${ip}:2087/`,
   },
   cyberpanel: {
     name: "CyberPanel",
-    icon: "/icons/cyberpanel.png",
+    iconBase: "/icons/cyberpanel",
     url: (ip) => `https://${ip}:8090/`,
   },
   ispconfig: {
     name: "ISPConfig",
-    icon: "/icons/ispconfig.png",
+    iconBase: "/icons/ispconfig",
     url: (ip) => `https://${ip}:8080/`,
   },
 };
@@ -47,6 +47,9 @@ export default function Home() {
   const [installedPanels, setInstalledPanels] = useState([]);
   const [installedEmulators, setInstalledEmulators] = useState([]);
   const [serverIp, setServerIp] = useState("168.231.99.143"); // Coloque seu IP fixo ou busque via API
+
+  // Estado para fallback do ícone do painel
+  const [iconSrc, setIconSrc] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/api/panels/installed`)
@@ -62,6 +65,15 @@ export default function Home() {
   const painelInstalado = installedPanels.length > 0;
   const painelKey = painelInstalado ? installedPanels[0] : null;
   const painelData = painelKey ? panelInfo[painelKey] : null;
+
+  // Atualiza o src do ícone sempre que o painel mudar
+  useEffect(() => {
+    if (painelData) {
+      setIconSrc(`${painelData.iconBase}.svg`);
+    } else {
+      setIconSrc(null);
+    }
+  }, [painelData]);
 
   // Exemplo: status fixo para FluxCP e Fórum (você pode integrar depois)
   const fluxcpInstalado = false;
@@ -129,10 +141,16 @@ export default function Home() {
           {painelInstalado && painelData ? (
             <>
               <img
-                src={painelData.icon}
+                src={iconSrc}
                 alt={painelData.name}
-                className="w-12 h-12 mb-2 mx-auto"
+                className="w-12 h-12 mb-2 mx-auto object-contain"
                 style={{ filter: "drop-shadow(0 0 4px #fff8)" }}
+                onError={() => {
+                  // Se falhar o SVG, tenta PNG
+                  if (iconSrc && iconSrc.endsWith(".svg")) {
+                    setIconSrc(`${painelData.iconBase}.png`);
+                  }
+                }}
               />
               <h2 className="text-xl font-bold mb-2">{painelData.name}</h2>
               <p>
