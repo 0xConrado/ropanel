@@ -216,7 +216,6 @@ app.get('/api/os', (req, res) => {
 
 // Endpoint para listar painéis realmente instalados
 app.get('/api/panels/installed', (req, res) => {
-  // Adicione checagens para outros painéis conforme necessário
   const checks = [
     { name: "webmin", cmd: "systemctl is-active webmin" },
     { name: "hestiacp", cmd: "systemctl is-active hestia" },
@@ -242,7 +241,19 @@ app.get('/api/panels/installed', (req, res) => {
   });
 });
 
-// Endpoint para instalar painel (Webmin, cPanel, HestiaCP, CyberPanel, ISPConfig, aaPanel, Froxlor)
+// NOVO ENDPOINT: Lista emuladores instalados
+app.get('/api/emulators/installed', (req, res) => {
+  // Lista as pastas dentro de EMULADOR_DIR como emuladores instalados
+  fs.readdir(EMULADOR_DIR, { withFileTypes: true }, (err, files) => {
+    if (err) return res.json({ installed: [] });
+    const installed = files
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name.toLowerCase());
+    res.json({ installed });
+  });
+});
+
+// Endpoint para instalar painel
 app.post('/install/panel', (req, res) => {
   const { panel } = req.body;
   if (!panel) return res.status(400).send("Painel não especificado.");
