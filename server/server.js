@@ -31,11 +31,14 @@ function getPlatformCommands(tipo, operacao) {
 
   const commands = {
     linux: {
-      // Executa configure (se existir), make clean (se Makefile existir), e make server
+      // Compilar: executa configure (se existir), make clean (se Makefile existir), e make server
       compilar: `cd ${basePath} && [ -f configure ] && chmod +x configure && ./configure ; [ -f Makefile ] && make clean || true ; make server`,
-      iniciar: `cd ${basePath} && ./start-server`,
-      parar: `cd ${basePath} && ./stop-server`,
-      reiniciar: `cd ${basePath} && ./stop-server && ./start-server`
+      // Iniciar: executa login-server, char-server e map-server em background
+      iniciar: `cd ${basePath} && ./login-server & ./char-server & ./map-server &`,
+      // Parar: mata os processos dos três servidores
+      parar: `cd ${basePath} && pkill login-server && pkill char-server && pkill map-server`,
+      // Reiniciar: para e inicia novamente os três servidores
+      reiniciar: `cd ${basePath} && pkill login-server && pkill char-server && pkill map-server && ./login-server & ./char-server & ./map-server &`
     },
     win32: {
       compilar: `cd ${basePath} && cmake . && cmake --build .`,
