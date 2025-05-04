@@ -95,7 +95,7 @@ router.post('/api/database/setup', async (req, res) => {
       map_server_db: req.body.nomeBase + '_main',
       web_server_db: req.body.nomeBase + '_main',
       // Database _log
-      log_db_db: req.body.nomeBase + '_log'
+      log_db_db: req.body.nomeBase + '_logs'
     };
     updateConfFile(interConfPath, confData);
 
