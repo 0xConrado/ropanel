@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
 
+const API_BASE_URL = 'http://168.231.99.143:3001';
+
 function EmulatorManager({ emulatorName }) {
   const [status, setStatus] = useState({ login: 'offline', char: 'offline', map: 'offline' });
   const [logs, setLogs] = useState({ login: '', char: '', map: '' });
   const [loading, setLoading] = useState(false);
 
   const fetchStatus = () => {
-    fetch('/api/emulator/status')
+    fetch(`${API_BASE_URL}/api/emulator/status`)
       .then(res => res.json())
       .then(setStatus)
       .catch(console.error);
   };
 
   const fetchLogs = (server) => {
-    fetch(`/api/emulator/logs/${server}`)
+    fetch(`${API_BASE_URL}/api/emulator/logs/${server}`)
       .then(res => res.json())
       .then(data => {
         setLogs(prev => ({ ...prev, [server]: data.logs }));
@@ -29,7 +31,7 @@ function EmulatorManager({ emulatorName }) {
 
   const handleAction = (action, server) => {
     setLoading(true);
-    let url = `/api/emulator/${action}`;
+    let url = `${API_BASE_URL}/api/emulator/${action}`;
     if (server) url += `/${server}`;
     fetch(url, { method: 'POST' })
       .then(res => res.json())

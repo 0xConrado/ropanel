@@ -12,9 +12,11 @@ export default defineConfig({
   server: {
     open: true,
     proxy: {
-      '/api': 'http://localhost:3001'
-      // Se o backend estiver em outro IP, use:
-      // '/api': 'http://168.231.99.143:3001'
-    }
-  }
+      '/api': 'http://168.231.99.143:3001',
+      '/ws': {
+        target: 'ws://168.231.99.143:3001',
+        ws: true,
+      },
+    },
+  },
 })
