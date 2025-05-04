@@ -10,7 +10,8 @@ import {
   ChevronDown,
   ChevronUp,
   Database,
-  FileCog
+  Shield,
+  Cpu
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -22,8 +23,13 @@ export default function Sidebar() {
   const isActive = (path) =>
     location.pathname === path ? "bg-gray-700" : "hover:bg-gray-700";
 
-  // Submenus de configurações
+  // Submenus de configurações na ordem desejada
   const subconfigs = [
+    {
+      to: "/subconfigs/conf_vps",
+      icon: <Cpu size={16} />,
+      label: "VPS"
+    },
     {
       to: "/subconfigs/conf_bancodedados",
       icon: <Database size={16} />,
@@ -33,8 +39,12 @@ export default function Sidebar() {
       to: "/subconfigs/conf_emulador",
       icon: <Server size={16} />,
       label: "Emulador"
+    },
+    {
+      to: "/subconfigs/conf_firewall",
+      icon: <Shield size={16} />,
+      label: "Firewall"
     }
-    // Adicione mais submenus aqui se quiser
   ];
 
   return (
