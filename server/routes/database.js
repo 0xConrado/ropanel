@@ -29,9 +29,7 @@ router.post('/api/database/setup', async (req, res) => {
   const arquivos = [
     { nome: 'main', arquivo: 'main.sql' },
     { nome: 'logs', arquivo: 'logs.sql' },
-    { nome: 'item_db', arquivo: tipoServidor === 'RE' ? 'item_db_re.sql' : 'item_db.sql' },
-    { nome: 'login', arquivo: 'login.sql' },
-    // Adicione outros arquivos necessários aqui
+    { nome: 'item_db', arquivo: tipoServidor === 'RE' ? 'item_db_re.sql' : 'item_db.sql' }
   ];
 
   // Gere userid e userpass aleatórios
@@ -47,8 +45,8 @@ router.post('/api/database/setup', async (req, res) => {
       await execPromise(`mysql -u${usuario} -p${senha} ${dbName} < ${sqlDir}/${arquivo}`);
     }
 
-    // Atualiza o login do account_id 1 no banco de dados de login
-    await execPromise(`mysql -u${usuario} -p${senha} ${nomeBase}_login -e "UPDATE login SET userid='${userid}', user_pass='${userpass}' WHERE account_id=1;"`);
+    // Atualiza o login do account_id 1 no banco de dados main
+    await execPromise(`mysql -u${usuario} -p${senha} ${nomeBase}_main -e "UPDATE login SET userid='${userid}', user_pass='${userpass}' WHERE account_id=1;"`);
 
     // Atualiza os arquivos de configuração do emulador
     // Altere os caminhos abaixo se necessário!
