@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Save, Pencil } from "lucide-react";
+import { Save, Pencil, ChevronDown, ChevronUp } from "lucide-react";
 
 const arquivos = [
   "login_athena.conf",
@@ -8,15 +8,23 @@ const arquivos = [
   "inter_athena.conf"
 ];
 
-export default function Emulador() {
+// Defina os campos principais de cada arquivo
+const principais = {
+  "login_athena.conf": ["userid", "passwd", "login_ip", "login_port"],
+  "map_athena.conf": ["userid", "passwd", "map_ip", "map_port"],
+  "char_athena.conf": ["userid", "passwd", "char_ip", "char_port"],
+  "inter_athena.conf": ["sql.db_hostname", "sql.db_username", "sql.db_password", "sql.db_database"]
+};
+
+export default function ConfEmulador() {
   const [confDir, setConfDir] = useState(
     localStorage.getItem("emuConfDir") || ""
   );
   const [configs, setConfigs] = useState({});
   const [edit, setEdit] = useState(false);
   const [msg, setMsg] = useState("");
+  const [expandido, setExpandido] = useState({});
 
-  // Busca os dados dos arquivos ao abrir a página ou mudar o caminho
   useEffect(() => {
     if (confDir) {
       fetch("/api/emulador/ler-configs", {
@@ -67,6 +75,13 @@ export default function Emulador() {
     }
   };
 
+  const toggleExpand = (arq) => {
+    setExpandido(prev => ({
+      ...prev,
+      [arq]: !prev[arq]
+    }));
+  };
+
   return (
     <section>
       <h2 className="text-xl font-bold text-white mb-4">Configuração do Emulador</h2>
@@ -102,20 +117,42 @@ export default function Emulador() {
                 >
                   <Save className="w-5 h-5 text-green-500" />
                 </button>
+                <button
+                  className="p-1"
+                  onClick={() => toggleExpand(arq)}
+                  title={expandido[arq] ? "Minimizar" : "Maximizar"}
+                >
+                  {expandido[arq] ? (
+                    <ChevronUp className="w-5 h-5 text-yellow-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-yellow-400" />
+                  )}
+                </button>
               </div>
               {configs[arq] &&
-                Object.entries(configs[arq]).map(([key, value]) => (
-                  <div key={key} className="mb-2">
-                    <label className="block text-gray-300">{key}</label>
-                    <input
-                      className="w-full p-2 rounded bg-gray-800 text-white"
-                      value={value}
-                      onChange={e =>
-                        handleFieldChange(arq, key, e.target.value)
-                      }
-                    />
-                  </div>
-                ))}
+                Object.entries(configs[arq])
+                  .filter(([key]) =>
+                    expandido[arq]
+                      ? true
+                      : (principais[arq] || []).includes(key)
+                  )
+                  .map(([key, value]) => (
+                    <div key={key} className="mb-2">
+                      <label className="block text-gray-300">{key}</label>
+                      <input
+                        className="w-full p-2 rounded bg-gray-800 text-white"
+                        value={value}
+                        onChange={e =>
+                          handleFieldChange(arq, key, e.target.value)
+                        }
+                      />
+                    </div>
+                  ))}
+              {!expandido[arq] && configs[arq] && (
+                <div className="text-xs text-gray-400 mt-2">
+                  Mostrando apenas os campos principais. Clique em <ChevronDown className="inline w-4 h-4" /> para ver todos.
+                </div>
+              )}
             </div>
           ))}
         </div>
