@@ -2,6 +2,7 @@ const express = require('express');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { updateConfFile } = require('../utils/updateConfFile');
 const router = express.Router();
 
 function gerarSenhaAleatoria(tamanho = 16) {
@@ -19,6 +20,16 @@ function atualizarConf(confPath, userid, userpass) {
   conf = conf.replace(/userid:.*$/m, `userid: ${userid}`);
   conf = conf.replace(/passwd:.*$/m, `passwd: ${userpass}`);
   fs.writeFileSync(confPath, conf, 'utf8');
+}
+
+// Função utilitária para usar exec com async/await
+function execPromise(cmd) {
+  return new Promise((resolve, reject) => {
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) reject(stderr || err.message);
+      else resolve(stdout);
+    });
+  });
 }
 
 router.post('/api/database/setup', async (req, res) => {
@@ -49,10 +60,44 @@ router.post('/api/database/setup', async (req, res) => {
     await execPromise(`mysql -u${usuario} -p${senha} ${nomeBase}_main -e "UPDATE login SET userid='${userid}', user_pass='${userpass}' WHERE account_id=1;"`);
 
     // Atualiza os arquivos de configuração do emulador
-    // Altere os caminhos abaixo se necessário!
     const confDir = '/root/Emulador/rathena/conf';
     atualizarConf(path.join(confDir, 'char_athena.conf'), userid, userpass);
     atualizarConf(path.join(confDir, 'map_athena.conf'), userid, userpass);
+
+    // --- ATUALIZA O inter_athena.conf ---
+    const interConfPath = path.join(confDir, 'inter_athena.conf');
+    const confData = {
+      // IPs
+      login_server_ip: req.body.host,
+      ipban_db_ip: req.body.host,
+      char_server_ip: req.body.host,
+      map_server_ip: req.body.host,
+      web_server_ip: req.body.host,
+      log_db_ip: req.body.host,
+      // Usuários
+      login_server_id: req.body.usuario,
+      ipban_db_id: req.body.usuario,
+      char_server_id: req.body.usuario,
+      map_server_id: req.body.usuario,
+      web_server_id: req.body.usuario,
+      log_db_id: req.body.usuario,
+      // Senhas
+      login_server_pw: req.body.senha,
+      ipban_db_pw: req.body.senha,
+      char_server_pw: req.body.senha,
+      map_server_pw: req.body.senha,
+      web_server_pw: req.body.senha,
+      log_db_pw: req.body.senha,
+      // Database _main
+      login_server_db: req.body.nomeBase + '_main',
+      ipban_db_db: req.body.nomeBase + '_main',
+      char_server_db: req.body.nomeBase + '_main',
+      map_server_db: req.body.nomeBase + '_main',
+      web_server_db: req.body.nomeBase + '_main',
+      // Database _log
+      log_db_db: req.body.nomeBase + '_log'
+    };
+    updateConfFile(interConfPath, confData);
 
     res.json({
       ok: true,
@@ -64,15 +109,5 @@ router.post('/api/database/setup', async (req, res) => {
     res.status(500).json({ ok: false, error: err.toString() });
   }
 });
-
-// Função utilitária para usar exec com async/await
-function execPromise(cmd) {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) reject(stderr || err.message);
-      else resolve(stdout);
-    });
-  });
-}
 
 module.exports = router;
