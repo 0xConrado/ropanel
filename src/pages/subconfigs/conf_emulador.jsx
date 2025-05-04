@@ -13,14 +13,17 @@ const principais = {
     { key: "login_port", label: "Porta do Login Server" }
   ],
   "map_athena.conf": [
-    { key: "map_ip", label: "IP do Map Server" },
-    { key: "map_port", label: "Porta do Map Server" },
     { key: "char_ip", label: "IP do Char Server" },
-    { key: "char_port", label: "Porta do Char Server" }
+    { key: "char_port", label: "Porta do Char Server" },
+    { key: "map_ip", label: "IP do Map Server" },
+    { key: "map_port", label: "Porta do Map Server" }
   ],
   "char_athena.conf": [
+    { key: "server_name", label: "Server Name" },
+    { key: "wisp_server_name", label: "Wisp Server Name" },
+    { key: "login_ip", label: "IP do Login Server" },
+    { key: "login_port", label: "Porta do Login Server" },
     { key: "char_ip", label: "IP do Char Server" },
-    { key: "map_ip", label: "IP do Map Server" },
     { key: "char_port", label: "Porta do Char Server" }
   ],
   "inter_athena.conf": [
