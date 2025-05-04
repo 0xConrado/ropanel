@@ -5,9 +5,13 @@ import Panel from "./pages/Panel";
 import Emulador from "./pages/Emulador";
 import FluxCP from "./pages/FluxCP";
 import Forum from "./pages/Forum";
-import Configuracoes from "./pages/Configuracoes";
-import ConfigurarBanco from "./pages/ConfigurarBanco"; // <--- adicione este import
 import NotFound from "./pages/NotFound";
+
+// Importe os subconfigs:
+import ConfVPS from "./pages/subconfigs/conf_vps";
+import ConfBancoDeDados from "./pages/subconfigs/conf_bancodedados";
+import ConfEmulador from "./pages/subconfigs/conf_emulador";
+import ConfFirewall from "./pages/subconfigs/conf_firewall";
 
 function App() {
   return (
@@ -21,11 +25,13 @@ function App() {
             <Route path="/emulador" element={<Emulador />} />
             <Route path="/fluxcp" element={<FluxCP />} />
             <Route path="/forum" element={<Forum />} />
-            {/* Rotas aninhadas para Configurações */}
-            <Route path="/configuracoes" element={<Configuracoes />}>
-              <Route path="banco" element={<ConfigurarBanco />} />
-              {/* Adicione outros submenus aqui */}
-            </Route>
+
+            {/* Rotas para subconfigs */}
+            <Route path="/subconfigs/conf_vps" element={<ConfVPS />} />
+            <Route path="/subconfigs/conf_bancodedados" element={<ConfBancoDeDados />} />
+            <Route path="/subconfigs/conf_emulador" element={<ConfEmulador />} />
+            <Route path="/subconfigs/conf_firewall" element={<ConfFirewall />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
