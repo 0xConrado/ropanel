@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const databaseRoutes = require('./routes/database');
 const emuladorRoutes = require('./routes/emulador');
+const emulatorManagerRoutes = require('./routes/emulatorManager'); // Importa as rotas do gerenciador de emulador
 const { exec, execSync, spawn } = require('child_process');
 const http = require('http');
 const WebSocket = require('ws');
@@ -23,9 +24,10 @@ const runningServers = {}; // Guarda processos spawn dos servidores
 app.use(cors());
 app.use(express.json());
 
-// Rotas externas (database e emulador)
+// Rotas externas (database, emulador e gerenciador de emulador)
 app.use(databaseRoutes);
 app.use(emuladorRoutes);
+app.use('/api/emulator', emulatorManagerRoutes); // Usa as rotas do gerenciador de emulador
 
 // Garante que o diretório do emulador existe
 if (!fs.existsSync(EMULADOR_DIR)) {
