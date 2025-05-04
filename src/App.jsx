@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useParams } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Home from "./pages/Home";
 import Panel from "./pages/Panel";
@@ -7,11 +7,17 @@ import FluxCP from "./pages/FluxCP";
 import Forum from "./pages/Forum";
 import NotFound from "./pages/NotFound";
 
-// Importe os subconfigs:
 import ConfVPS from "./pages/subconfigs/conf_vps";
 import ConfBancoDeDados from "./pages/subconfigs/conf_bancodedados";
 import ConfEmulador from "./pages/subconfigs/conf_emulador";
 import ConfFirewall from "./pages/subconfigs/conf_firewall";
+
+import EmulatorManager from "./pages/EmulatorManager";
+
+function EmulatorManagerWrapper() {
+  const { name } = useParams();
+  return <EmulatorManager emulatorName={name} />;
+}
 
 function App() {
   return (
@@ -23,10 +29,10 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/panel" element={<Panel />} />
             <Route path="/emulador" element={<Emulador />} />
+            <Route path="/emulator/:name" element={<EmulatorManagerWrapper />} />
             <Route path="/fluxcp" element={<FluxCP />} />
             <Route path="/forum" element={<Forum />} />
 
-            {/* Rotas para subconfigs */}
             <Route path="/subconfigs/conf_vps" element={<ConfVPS />} />
             <Route path="/subconfigs/conf_bancodedados" element={<ConfBancoDeDados />} />
             <Route path="/subconfigs/conf_emulador" element={<ConfEmulador />} />
