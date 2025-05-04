@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Save, Pencil, ChevronDown, ChevronUp } from "lucide-react";
+import { Save, Pencil } from "lucide-react";
 
 const arquivos = [
   "login_athena.conf",
@@ -9,14 +9,68 @@ const arquivos = [
 ];
 
 const principais = {
-  "login_athena.conf": ["userid", "passwd", "login_ip", "login_port"],
-  "map_athena.conf": ["userid", "passwd", "map_ip", "map_port"],
-  "char_athena.conf": ["userid", "passwd", "char_ip", "char_port"],
+  "login_athena.conf": [
+    { key: "login_port", label: "Porta do Login Server" }
+  ],
+  "map_athena.conf": [
+    { key: "map_ip", label: "IP do Map Server" },
+    { key: "map_port", label: "Porta do Map Server" },
+    { key: "char_ip", label: "IP do Char Server" },
+    { key: "char_port", label: "Porta do Char Server" }
+  ],
+  "char_athena.conf": [
+    { key: "char_ip", label: "IP do Char Server" },
+    { key: "map_ip", label: "IP do Map Server" },
+    { key: "char_port", label: "Porta do Char Server" }
+  ],
   "inter_athena.conf": [
-    "sql.db_hostname",
-    "sql.db_username",
-    "sql.db_password",
-    "sql.db_database"
+    // Login Server
+    { section: "Login Server" },
+    { key: "login_server_ip", label: "IP do Banco de Dados" },
+    { key: "login_server_port", label: "Porta" },
+    { key: "login_server_id", label: "Usuário" },
+    { key: "login_server_pw", label: "Senha" },
+    { key: "login_server_db", label: "Banco de Dados" },
+    { key: "login_codepage", label: "Codificação" },
+    { key: "login_case_sensitive", label: "Case Sensitive" },
+    // IPBan Database
+    { section: "IPBan Database" },
+    { key: "ipban_db_ip", label: "IP do Banco de Dados" },
+    { key: "ipban_db_port", label: "Porta" },
+    { key: "ipban_db_id", label: "Usuário" },
+    { key: "ipban_db_pw", label: "Senha" },
+    { key: "ipban_db_db", label: "Banco de Dados" },
+    { key: "ipban_codepage", label: "Codificação" },
+    // Character Server
+    { section: "Character Server" },
+    { key: "char_server_ip", label: "IP do Banco de Dados" },
+    { key: "char_server_port", label: "Porta" },
+    { key: "char_server_id", label: "Usuário" },
+    { key: "char_server_pw", label: "Senha" },
+    { key: "char_server_db", label: "Banco de Dados" },
+    // Map Server
+    { section: "Map Server" },
+    { key: "map_server_ip", label: "IP do Banco de Dados" },
+    { key: "map_server_port", label: "Porta" },
+    { key: "map_server_id", label: "Usuário" },
+    { key: "map_server_pw", label: "Senha" },
+    { key: "map_server_db", label: "Banco de Dados" },
+    // Web Server
+    { section: "Web Server" },
+    { key: "web_server_ip", label: "IP do Banco de Dados" },
+    { key: "web_server_port", label: "Porta" },
+    { key: "web_server_id", label: "Usuário" },
+    { key: "web_server_pw", label: "Senha" },
+    { key: "web_server_db", label: "Banco de Dados" },
+    // Log Database
+    { section: "Log Database" },
+    { key: "log_db_ip", label: "IP do Banco de Dados" },
+    { key: "log_db_port", label: "Porta" },
+    { key: "log_db_id", label: "Usuário" },
+    { key: "log_db_pw", label: "Senha" },
+    { key: "log_db_db", label: "Banco de Dados" },
+    { key: "log_codepage", label: "Codificação" },
+    { key: "log_login_db", label: "Tabela de Login" }
   ]
 };
 
@@ -27,7 +81,6 @@ export default function ConfEmulador() {
   const [configs, setConfigs] = useState({});
   const [edit, setEdit] = useState(false);
   const [msg, setMsg] = useState("");
-  const [expandido, setExpandido] = useState({});
 
   useEffect(() => {
     if (confDir) {
@@ -79,13 +132,6 @@ export default function ConfEmulador() {
     }
   };
 
-  const toggleExpand = (arq) => {
-    setExpandido(prev => ({
-      ...prev,
-      [arq]: !prev[arq]
-    }));
-  };
-
   return (
     <section>
       <h2 className="text-xl font-bold text-white mb-4">Configuração do Emulador</h2>
@@ -121,60 +167,53 @@ export default function ConfEmulador() {
                 >
                   <Save className="w-5 h-5 text-green-500" />
                 </button>
-                <button
-                  className="p-1"
-                  onClick={() => toggleExpand(arq)}
-                  title={expandido[arq] ? "Minimizar" : "Maximizar"}
-                >
-                  {expandido[arq] ? (
-                    <ChevronUp className="w-5 h-5 text-yellow-400" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-yellow-400" />
-                  )}
-                </button>
               </div>
-
-              {/* Renderização especial para inter_athena.conf */}
-              {arq === "inter_athena.conf" && !expandido[arq] ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {principais[arq].map((key) => (
-                    <div key={key} className="bg-gray-800 rounded p-3 mb-2 shadow">
-                      <div className="text-xs text-gray-400 font-semibold">{key}</div>
-                      <div className="text-base font-mono break-all">
-                        {configs[arq]?.[key] || <span className="text-gray-500">-</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                // Renderização padrão (todos os campos editáveis)
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {configs[arq] &&
-                    Object.entries(configs[arq])
-                      .filter(([key]) =>
-                        expandido[arq]
-                          ? true
-                          : (principais[arq] || []).includes(key)
-                      )
-                      .map(([key, value]) => (
-                        <div key={key} className="mb-2">
-                          <label className="block text-gray-300 font-semibold">{key}</label>
+              {/* Renderização especial para inter_athena.conf em seções */}
+              {arq === "inter_athena.conf" ? (
+                <div className="space-y-6">
+                  {(() => {
+                    const campos = principais[arq];
+                    let atualSection = null;
+                    return campos.map((item, idx) => {
+                      if (item.section) {
+                        atualSection = item.section;
+                        return (
+                          <div key={item.section} className="mb-2 mt-4">
+                            <div className="text-yellow-400 font-bold text-base border-b border-yellow-400 pb-1 mb-2">
+                              {item.section}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={item.key} className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <label className="block text-gray-300 font-semibold">{item.label}</label>
                           <input
                             className="w-full p-2 rounded bg-gray-800 text-white"
-                            value={value}
+                            value={configs[arq]?.[item.key] || ""}
                             onChange={e =>
-                              handleFieldChange(arq, key, e.target.value)
+                              handleFieldChange(arq, item.key, e.target.value)
                             }
-                            disabled={!expandido[arq] && arq === "inter_athena.conf"}
                           />
                         </div>
-                      ))}
+                      );
+                    });
+                  })()}
                 </div>
-              )}
-
-              {!expandido[arq] && configs[arq] && arq !== "inter_athena.conf" && (
-                <div className="text-xs text-gray-400 mt-2">
-                  Mostrando apenas os campos principais. Clique em <ChevronDown className="inline w-4 h-4" /> para ver todos.
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {principais[arq].map(item => (
+                    <div key={item.key} className="mb-2">
+                      <label className="block text-gray-300 font-semibold">{item.label}</label>
+                      <input
+                        className="w-full p-2 rounded bg-gray-800 text-white"
+                        value={configs[arq]?.[item.key] || ""}
+                        onChange={e =>
+                          handleFieldChange(arq, item.key, e.target.value)
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
