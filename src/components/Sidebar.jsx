@@ -1,11 +1,41 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Server, PanelTop, Globe, MessageCircle, Settings } from "lucide-react";
+import {
+  Home,
+  Server,
+  PanelTop,
+  Globe,
+  MessageCircle,
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  Database,
+  FileCog
+} from "lucide-react";
 
 export default function Sidebar() {
   const location = useLocation();
+  const [configOpen, setConfigOpen] = useState(
+    location.pathname.startsWith("/subconfigs/")
+  );
 
   const isActive = (path) =>
     location.pathname === path ? "bg-gray-700" : "hover:bg-gray-700";
+
+  // Submenus de configurações
+  const subconfigs = [
+    {
+      to: "/subconfigs/conf_bancodedados",
+      icon: <Database size={16} />,
+      label: "Banco de Dados"
+    },
+    {
+      to: "/subconfigs/conf_emulador",
+      icon: <Server size={16} />,
+      label: "Emulador"
+    }
+    // Adicione mais submenus aqui se quiser
+  ];
 
   return (
     <div className="w-64 h-screen bg-gray-800 text-white flex flex-col border-r border-gray-700">
@@ -26,9 +56,36 @@ export default function Sidebar() {
         <Link to="/forum" className={`flex items-center gap-2 p-2 rounded ${isActive("/forum")}`}>
           <MessageCircle size={18} /> Forum
         </Link>
-        <Link to="/configuracoes" className={`flex items-center gap-2 p-2 rounded ${isActive("/configuracoes")}`}>
-          <Settings size={18} /> Configurações
-        </Link>
+
+        {/* Dropdown de Configurações */}
+        <div>
+          <button
+            className={`flex items-center gap-2 p-2 rounded w-full text-left ${location.pathname.startsWith("/subconfigs/") ? "bg-gray-700" : "hover:bg-gray-700"}`}
+            onClick={() => setConfigOpen((v) => !v)}
+          >
+            <Settings size={18} />
+            Configurações
+            <span className="ml-auto">
+              {configOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </span>
+          </button>
+          {configOpen && (
+            <div className="ml-6 mt-1 flex flex-col gap-1">
+              {subconfigs.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-2 p-2 rounded text-sm ${
+                    isActive(item.to)
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
     </div>
   );
