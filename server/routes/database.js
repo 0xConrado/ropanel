@@ -30,6 +30,7 @@ router.post('/api/database/setup', async (req, res) => {
     { nome: 'main', arquivo: 'main.sql' },
     { nome: 'logs', arquivo: 'logs.sql' },
     { nome: 'item_db', arquivo: tipoServidor === 'RE' ? 'item_db_re.sql' : 'item_db.sql' },
+    { nome: 'login', arquivo: 'login.sql' },
     // Adicione outros arquivos necessários aqui
   ];
 
