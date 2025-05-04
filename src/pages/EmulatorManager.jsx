@@ -29,19 +29,84 @@ function EmulatorManager({ emulatorName }) {
     // Para logs em tempo real, implementar WebSocket ou polling
   }, []);
 
-  const handleAction = (action, server) => {
-    setLoading(true);
+  // Função para executar uma ação POST na API
+  const postAction = async (action, server) => {
     let url = `${API_BASE_URL}/api/emulator/${action}`;
     if (server) url += `/${server}`;
-    fetch(url, { method: 'POST' })
-      .then(res => res.json())
-      .then(data => {
-        alert(data.message || data.error);
-        fetchStatus();
-        if (server) fetchLogs(server);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Erro na ação ${action} ${server || ''}: ${text}`);
+    }
+    return res.json();
+  };
+
+  // Iniciar servidores na ordem correta: login -> map -> char
+  const handleStartAll = async () => {
+    setLoading(true);
+    try {
+      let response;
+
+      response = await postAction('start', 'login');
+      alert(response.message || 'Login server iniciado');
+      await fetchStatus();
+      await fetchLogs('login');
+
+      response = await postAction('start', 'map');
+      alert(response.message || 'Map server iniciado');
+      await fetchStatus();
+      await fetchLogs('map');
+
+      response = await postAction('start', 'char');
+      alert(response.message || 'Char server iniciado');
+      await fetchStatus();
+      await fetchLogs('char');
+
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Parar todos os servidores
+  const handleStopAll = async () => {
+    setLoading(true);
+    try {
+      const response = await postAction('stopAll');
+      alert(response.message || 'Todos os servidores parados');
+      await fetchStatus();
+      ['login', 'char', 'map'].forEach(fetchLogs);
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funções para compilar e recompilar
+  const handleCompile = async () => {
+    setLoading(true);
+    try {
+      const response = await postAction('compile');
+      alert(response.message || 'Compilação iniciada');
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRecompile = async () => {
+    setLoading(true);
+    try {
+      const response = await postAction('recompile');
+      alert(response.message || 'Recompilação iniciada');
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,16 +122,19 @@ function EmulatorManager({ emulatorName }) {
         ))}
       </div>
 
-      <div style={{ margin: '20px 0' }}>
-        <button disabled={loading} onClick={() => handleAction('start', 'login')}>Iniciar Login</button>
-        <button disabled={loading} onClick={() => handleAction('stop', 'login')}>Desligar Login</button>
-        <button disabled={loading} onClick={() => handleAction('start', 'char')}>Iniciar Char</button>
-        <button disabled={loading} onClick={() => handleAction('stop', 'char')}>Desligar Char</button>
-        <button disabled={loading} onClick={() => handleAction('start', 'map')}>Iniciar Map</button>
-        <button disabled={loading} onClick={() => handleAction('stop', 'map')}>Desligar Map</button>
-        <button disabled={loading} onClick={() => handleAction('stopAll')}>Parar Todos</button>
-        <button disabled={loading} onClick={() => handleAction('compile')}>Compilar</button>
-        <button disabled={loading} onClick={() => handleAction('recompile')}>Recompilar</button>
+      <div style={{ margin: '20px 0', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button disabled={loading} onClick={handleStartAll} style={{ padding: '10px 20px' }}>
+          Iniciar Todos (Login → Map → Char)
+        </button>
+        <button disabled={loading} onClick={handleStopAll} style={{ padding: '10px 20px' }}>
+          Parar Todos
+        </button>
+        <button disabled={loading} onClick={handleCompile} style={{ padding: '10px 20px' }}>
+          Compilar
+        </button>
+        <button disabled={loading} onClick={handleRecompile} style={{ padding: '10px 20px' }}>
+          Recompilar
+        </button>
       </div>
 
       <div>
