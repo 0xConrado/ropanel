@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Home,
@@ -19,6 +19,15 @@ export default function Sidebar() {
   const [configOpen, setConfigOpen] = useState(
     location.pathname.startsWith("/subconfigs/")
   );
+
+  const [emulators, setEmulators] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/emulators/installed')
+      .then(res => res.json())
+      .then(data => setEmulators(data.installed || []))
+      .catch(console.error);
+  }, []);
 
   const isActive = (path) =>
     location.pathname === path ? "bg-gray-700" : "hover:bg-gray-700";
@@ -60,6 +69,19 @@ export default function Sidebar() {
         <Link to="/emulador" className={`flex items-center gap-2 p-2 rounded ${isActive("/emulador")}`}>
           <Server size={18} /> Emulador
         </Link>
+
+        {/* Emuladores instalados */}
+        {emulators.map(name => (
+          <Link
+            key={name}
+            to={`/emulator/${name}`}
+            className={`flex items-center gap-2 pl-8 p-2 rounded text-sm ${isActive(`/emulator/${name}`)}`}
+          >
+            <Server size={14} />
+            {`Gerenciador ${name.charAt(0).toUpperCase() + name.slice(1)}`}
+          </Link>
+        ))}
+
         <Link to="/fluxcp" className={`flex items-center gap-2 p-2 rounded ${isActive("/fluxcp")}`}>
           <Globe size={18} /> FluxCP
         </Link>
