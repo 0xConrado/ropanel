@@ -12,11 +12,11 @@ function updateConfFile(filePath, data) {
   const lines = original.split('\n');
   const newLines = lines.map(line => {
     // Expressão regular para capturar linhas do tipo: [espaços]chave: valor
-    const match = line.match(/^(\s*)([^#][^:]+):\s*(.*)$/);
+    const match = line.match(/^(\s*)([a-zA-Z0-9_]+):\s*(.*)$/);
     if (match) {
       const indent = match[1] || '';
       const key = match[2].trim();
-      if (data.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
         // Mantém a indentação original
         return `${indent}${key}: ${data[key]}`;
       }
