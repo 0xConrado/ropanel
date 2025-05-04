@@ -8,6 +8,7 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { updateConfFile } = require('./utils/updateConfFile'); // Utilitário para salvar configs preservando estrutura
 
 const app = express();
 const server = http.createServer(app);
@@ -16,15 +17,17 @@ const platform = os.platform();
 
 const EMULADOR_DIR = '/root/Emulador';
 const registeredClients = new Map();
-const runningServers = {}; // Para guardar os processos spawn
+const runningServers = {}; // Guarda processos spawn dos servidores
 
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
+// Rotas externas (database e emulador)
 app.use(databaseRoutes);
-
 app.use(emuladorRoutes);
 
+// Garante que o diretório do emulador existe
 if (!fs.existsSync(EMULADOR_DIR)) {
   fs.mkdirSync(EMULADOR_DIR, { recursive: true });
 }
@@ -51,7 +54,7 @@ function getPlatformCommands(tipo, operacao) {
   return commands[platform]?.[operacao] || null;
 }
 
-// Checagem de dependências básicas
+// Checagem de dependências básicas do sistema
 function checkDependencies() {
   const dependencies = {
     linux: ['make', 'gcc'],
@@ -70,6 +73,7 @@ function checkDependencies() {
   return missing;
 }
 
+// Verifica dependências ao iniciar
 const missingDeps = checkDependencies();
 if (missingDeps.length > 0) {
   console.error(`Faltam dependências: ${missingDeps.join(', ')}`);
@@ -103,6 +107,7 @@ wss.on('connection', (ws) => {
   });
 });
 
+// Função para enviar mensagens via WebSocket para um cliente específico
 function sendWsMessage(clientId, type, data) {
   const ws = registeredClients.get(clientId);
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -110,7 +115,7 @@ function sendWsMessage(clientId, type, data) {
   }
 }
 
-// Endpoint para instalar emulador (agora com logs em tempo real)
+// Endpoint para instalar emulador (com logs em tempo real)
 app.post('/api/instalar', (req, res) => {
   const { tipo, repo, clientId } = req.body;
 
@@ -152,7 +157,7 @@ app.post('/api/instalar', (req, res) => {
   });
 });
 
-// Endpoint para compilar emulador
+// Endpoint para compilar emulador (com logs em tempo real)
 app.post('/api/compilar', (req, res) => {
   const { tipo, clientId } = req.body;
 
@@ -196,7 +201,7 @@ app.post('/api/gerenciar', (req, res) => {
 
   const basePath = path.join(EMULADOR_DIR, tipo);
 
-  // Desinstalar
+  // Desinstalar emulador
   if (acao === "desinstalar") {
     const emuladorPath = path.join(EMULADOR_DIR, tipo);
     exec(`rm -rf ${emuladorPath}`, (err) => {
@@ -213,9 +218,8 @@ app.post('/api/gerenciar', (req, res) => {
     return;
   }
 
-  // Iniciar (logs em tempo real)
+  // Iniciar servidores do emulador
   if (acao === "iniciar") {
-    // Se já estiver rodando, não inicia de novo
     if (runningServers[tipo]) {
       sendWsMessage(clientId, 'error', { data: 'Servidores já estão rodando.' });
       return res.json({ error: 'Já rodando' });
@@ -249,7 +253,7 @@ app.post('/api/gerenciar', (req, res) => {
     return res.json({ success: true });
   }
 
-  // Parar
+  // Parar servidores do emulador
   if (acao === "parar") {
     if (runningServers[tipo]) {
       Object.values(runningServers[tipo]).forEach(proc => {
@@ -259,7 +263,6 @@ app.post('/api/gerenciar', (req, res) => {
       sendWsMessage(clientId, 'status', { data: 'Servidores parados.' });
       return res.json({ success: true });
     } else {
-      // fallback: pkill
       exec(`cd ${basePath} && pkill login-server && pkill char-server && pkill map-server`, () => {
         sendWsMessage(clientId, 'status', { data: 'Servidores parados.' });
         return res.json({ success: true });
@@ -268,9 +271,8 @@ app.post('/api/gerenciar', (req, res) => {
     return;
   }
 
-  // Reiniciar
+  // Reiniciar servidores do emulador
   if (acao === "reiniciar") {
-    // Parar
     if (runningServers[tipo]) {
       Object.values(runningServers[tipo]).forEach(proc => {
         if (proc && !proc.killed) proc.kill();
@@ -279,7 +281,6 @@ app.post('/api/gerenciar', (req, res) => {
     } else {
       exec(`cd ${basePath} && pkill login-server && pkill char-server && pkill map-server`);
     }
-    // Iniciar novamente
     const servers = [
       { name: "login", bin: "./login-server" },
       { name: "char", bin: "./char-server" },
@@ -308,7 +309,7 @@ app.post('/api/gerenciar', (req, res) => {
     return res.json({ success: true });
   }
 
-  // fallback para outras ações
+  // Fallback para outras ações
   const comando = getPlatformCommands(tipo, acao);
   if (!comando) return res.status(400).json({ error: 'Ação inválida' });
 
@@ -329,6 +330,19 @@ app.post('/api/gerenciar', (req, res) => {
     }
     sendWsMessage(clientId, 'complete', { code });
   });
+});
+
+// Endpoint para salvar configs do emulador preservando estrutura e comentários
+app.post('/api/emulador/salvar-config', (req, res) => {
+  const { confDir, arquivo, data } = req.body;
+  const filePath = path.join(confDir, arquivo);
+
+  try {
+    updateConfFile(filePath, data);
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
 });
 
 // Endpoint para detectar o sistema operacional
@@ -352,7 +366,7 @@ const panelChecks = [
   { name: "aapanel",    type: "port",    port: 13349 }
 ];
 
-// Endpoint para listar painéis realmente instalados (universal)
+// Endpoint para listar painéis realmente instalados
 app.get('/api/panels/installed', (req, res) => {
   let installed = [];
   let checked = 0;
@@ -400,7 +414,7 @@ app.get('/api/emulators/installed', (req, res) => {
   });
 });
 
-// Endpoint para instalar painel
+// Endpoint para instalar painel de controle
 app.post('/install/panel', (req, res) => {
   const { panel } = req.body;
   if (!panel) return res.status(400).send("Painel não especificado.");
@@ -440,7 +454,7 @@ app.post('/install/panel', (req, res) => {
   });
 });
 
-// Endpoint para desinstalar painel
+// Endpoint para desinstalar painel de controle
 app.post('/uninstall/panel', (req, res) => {
   const { panel } = req.body;
   if (!panel) return res.status(400).send("Painel não especificado.");
@@ -480,7 +494,7 @@ app.post('/uninstall/panel', (req, res) => {
   });
 });
 
-// Inicializa o servidor
+// Inicializa o servidor HTTP e WebSocket
 server.listen(3001, '0.0.0.0', () => {
   console.log(`Servidor rodando em http://localhost:3001 (${platform})`);
   console.log('WebSocket disponível em ws://localhost:3001');
