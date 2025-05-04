@@ -8,12 +8,16 @@ const arquivos = [
   "inter_athena.conf"
 ];
 
-// Defina os campos principais de cada arquivo
 const principais = {
   "login_athena.conf": ["userid", "passwd", "login_ip", "login_port"],
   "map_athena.conf": ["userid", "passwd", "map_ip", "map_port"],
   "char_athena.conf": ["userid", "passwd", "char_ip", "char_port"],
-  "inter_athena.conf": ["sql.db_hostname", "sql.db_username", "sql.db_password", "sql.db_database"]
+  "inter_athena.conf": [
+    "sql.db_hostname",
+    "sql.db_username",
+    "sql.db_password",
+    "sql.db_database"
+  ]
 };
 
 export default function ConfEmulador() {
@@ -108,8 +112,8 @@ export default function ConfEmulador() {
         <div className="space-y-8">
           {arquivos.map(arq => (
             <div key={arq} className="bg-gray-900 rounded p-4 text-white">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-bold">{arq}</span>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="font-bold text-lg">{arq.replace("_athena.conf", "").toUpperCase()}</span>
                 <button
                   className="p-1"
                   onClick={() => handleSaveConfig(arq)}
@@ -129,26 +133,46 @@ export default function ConfEmulador() {
                   )}
                 </button>
               </div>
-              {configs[arq] &&
-                Object.entries(configs[arq])
-                  .filter(([key]) =>
-                    expandido[arq]
-                      ? true
-                      : (principais[arq] || []).includes(key)
-                  )
-                  .map(([key, value]) => (
-                    <div key={key} className="mb-2">
-                      <label className="block text-gray-300">{key}</label>
-                      <input
-                        className="w-full p-2 rounded bg-gray-800 text-white"
-                        value={value}
-                        onChange={e =>
-                          handleFieldChange(arq, key, e.target.value)
-                        }
-                      />
+
+              {/* Renderização especial para inter_athena.conf */}
+              {arq === "inter_athena.conf" && !expandido[arq] ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {principais[arq].map((key) => (
+                    <div key={key} className="bg-gray-800 rounded p-3 mb-2 shadow">
+                      <div className="text-xs text-gray-400 font-semibold">{key}</div>
+                      <div className="text-base font-mono break-all">
+                        {configs[arq]?.[key] || <span className="text-gray-500">-</span>}
+                      </div>
                     </div>
                   ))}
-              {!expandido[arq] && configs[arq] && (
+                </div>
+              ) : (
+                // Renderização padrão (todos os campos editáveis)
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {configs[arq] &&
+                    Object.entries(configs[arq])
+                      .filter(([key]) =>
+                        expandido[arq]
+                          ? true
+                          : (principais[arq] || []).includes(key)
+                      )
+                      .map(([key, value]) => (
+                        <div key={key} className="mb-2">
+                          <label className="block text-gray-300 font-semibold">{key}</label>
+                          <input
+                            className="w-full p-2 rounded bg-gray-800 text-white"
+                            value={value}
+                            onChange={e =>
+                              handleFieldChange(arq, key, e.target.value)
+                            }
+                            disabled={!expandido[arq] && arq === "inter_athena.conf"}
+                          />
+                        </div>
+                      ))}
+                </div>
+              )}
+
+              {!expandido[arq] && configs[arq] && arq !== "inter_athena.conf" && (
                 <div className="text-xs text-gray-400 mt-2">
                   Mostrando apenas os campos principais. Clique em <ChevronDown className="inline w-4 h-4" /> para ver todos.
                 </div>
