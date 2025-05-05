@@ -12,6 +12,7 @@ const EMULADORES = [
 
 export default function Emulador() {
   const [selected, setSelected] = useState("hercules");
+  const selectedRef = useRef(selected); // Ref para manter valor atualizado de selected
   const [repoCustom, setRepoCustom] = useState("");
   const [status, setStatus] = useState({
     instalado: false,
@@ -31,6 +32,11 @@ export default function Emulador() {
   const [clientId] = useState(() => Math.random().toString(36).substring(2, 15));
   const ws = useRef(null);
   const logsEndRef = useRef(null);
+
+  // Atualiza o ref sempre que selected muda para usar valor atualizado dentro do WebSocket
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
 
   // Configura WebSocket para receber logs em tempo real
   useEffect(() => {
@@ -70,8 +76,8 @@ export default function Emulador() {
           emProgresso: false,
         }));
 
-        // Caminho da pasta conf do emulador instalado
-        const confDir = `/root/Emulador/${selected}/conf`;
+        // Usa o valor atualizado do selected via ref para evitar closure com valor antigo
+        const confDir = `/root/Emulador/${selectedRef.current}/conf`;
 
         // Chama API para descomentar linhas específicas nos arquivos de configuração
         fetch(`${API_URL}/api/emulador/configurar`, {
@@ -116,7 +122,7 @@ export default function Emulador() {
         setEmuladoresInstalados(data.installed || []);
         setStatus((prev) => ({
           ...prev,
-          instalado: data.installed?.includes(selected),
+          instalado: data.installed?.includes(selectedRef.current),
         }));
       });
   }
