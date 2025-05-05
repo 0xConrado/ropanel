@@ -32,16 +32,17 @@ export default function Emulador() {
   const ws = useRef(null);
   const logsEndRef = useRef(null);
 
-  // WebSocket para logs em tempo real
+  // Configura WebSocket para receber logs em tempo real
   useEffect(() => {
     ws.current = new window.WebSocket(API_URL.replace(/^http/, "ws"));
     ws.current.onopen = () => {
+      // Registra o cliente no backend para receber logs específicos
       ws.current.send(JSON.stringify({ type: "register", clientId }));
     };
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
-      // Logs do sistema
+      // Atualiza logs do sistema
       if (["log", "status", "error", "success"].includes(data.type) && !data.server) {
         setStatus((prev) => ({
           ...prev,
@@ -53,7 +54,7 @@ export default function Emulador() {
         }));
       }
 
-      // Logs dos servidores individuais
+      // Atualiza logs dos servidores individuais
       if (data.type === "log" && data.server) {
         setLogs((prev) => ({
           ...prev,
@@ -61,12 +62,34 @@ export default function Emulador() {
         }));
       }
 
+      // Quando a instalação for concluída, atualiza estado e chama endpoint para configurar arquivos
       if (data.type === "complete" && data.operacao === "instalar") {
         fetchEmuladores();
         setStatus((prev) => ({
           ...prev,
           emProgresso: false,
         }));
+
+        // Caminho da pasta conf do emulador instalado
+        const confDir = `/root/Emulador/${selected}/conf`;
+
+        // Chama API para descomentar linhas específicas nos arquivos de configuração
+        fetch(`${API_URL}/api/emulador/configurar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confDir }),
+        })
+          .then(res => res.json())
+          .then(res => {
+            if (!res.ok) {
+              alert("Erro ao configurar arquivos: " + res.error);
+            } else {
+              alert("Arquivos de configuração atualizados com sucesso!");
+            }
+          })
+          .catch(err => {
+            alert("Erro na requisição de configuração: " + err.message);
+          });
       }
     };
     ws.current.onclose = () => {};
@@ -75,14 +98,17 @@ export default function Emulador() {
     // eslint-disable-next-line
   }, [clientId]);
 
+  // Busca lista de emuladores instalados no backend
   useEffect(() => {
     fetchEmuladores();
   }, []);
 
+  // Faz scroll automático para o fim dos logs do sistema
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [status.logs]);
 
+  // Função para buscar emuladores instalados
   function fetchEmuladores() {
     fetch(`${API_URL}/api/emulators/installed`)
       .then((res) => res.json())
@@ -95,6 +121,7 @@ export default function Emulador() {
       });
   }
 
+  // Atualiza estado quando emulador selecionado ou lista de instalados muda
   useEffect(() => {
     setStatus((prev) => ({
       ...prev,
@@ -114,7 +141,7 @@ export default function Emulador() {
     // eslint-disable-next-line
   }, [selected, emuladoresInstalados]);
 
-  // Ações
+  // Função para iniciar instalação
   const instalar = async () => {
     setStatus((prev) => ({
       ...prev,
@@ -132,6 +159,7 @@ export default function Emulador() {
     });
   };
 
+  // Função para iniciar compilação
   const compilar = async () => {
     setStatus((prev) => ({
       ...prev,
@@ -148,6 +176,7 @@ export default function Emulador() {
     });
   };
 
+  // Função para gerenciar emulador (iniciar, parar, reiniciar)
   const gerenciar = async (acao) => {
     setStatus((prev) => ({
       ...prev,
@@ -163,12 +192,12 @@ export default function Emulador() {
         clientId,
       }),
     });
-    // Se for iniciar, mostrar os logs dos servidores e esconder o log do sistema
     if (acao === "iniciar") {
       setShowServers(true);
     }
   };
 
+  // Função para desinstalar emulador
   const desinstalar = async () => {
     setStatus((prev) => ({
       ...prev,
